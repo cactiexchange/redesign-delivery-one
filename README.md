@@ -28,6 +28,12 @@ diagrammer Wizard
    Final as-built document
 ```
 
+## Implementation plan
+
+[docs/implementation_plan.html](docs/implementation_plan.html) — gap analysis against the management
+flow (steps 1–4), eight workstreams (G1–G8), sprint sequencing, and decisions needed. Open it in a
+browser; it has a built-in commenting layer for review (comments export as JSON/Markdown).
+
 ## Integration seams (active work)
 
 ### Seam 1 — Diagrammer Wizard → seeder

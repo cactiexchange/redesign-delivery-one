@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>redesign-delivery-one — Gap Implementation Plan</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2129; --panel2: #212b35; --text: #d8e1e8;
+    --muted: #8a9aa8; --accent: #4db8a8; --green: #3fb950; --amber: #d29922;
+    --red: #f85149; --blue: #58a6ff; --border: #30404d;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: "Segoe UI", system-ui, sans-serif;
+         margin: 0; line-height: 1.55; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 40px 120px; }
+  h1 { color: var(--accent); font-size: 1.7em; border-bottom: 2px solid var(--accent); padding-bottom: 8px; }
+  h2 { color: var(--accent); margin-top: 2em; font-size: 1.3em; }
+  h3 { color: var(--blue); margin-top: 1.4em; font-size: 1.05em; }
+  p, li { color: var(--text); }
+  .muted { color: var(--muted); }
+  code { background: var(--panel2); padding: 1px 6px; border-radius: 4px; font-size: 0.92em; color: #e3b341; }
+  pre { background: var(--panel2); padding: 12px 16px; border-radius: 8px; overflow-x: auto;
+        border: 1px solid var(--border); font-size: 0.88em; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 0.92em; }
+  th { background: var(--panel2); color: var(--accent); text-align: left; }
+  th, td { border: 1px solid var(--border); padding: 7px 11px; vertical-align: top; }
+  .tag { display: inline-block; padding: 1px 9px; border-radius: 10px; font-size: 0.78em; font-weight: 600; }
+  .tag.built   { background: #1c3329; color: var(--green); border: 1px solid var(--green); }
+  .tag.partial { background: #332b1c; color: var(--amber); border: 1px solid var(--amber); }
+  .tag.missing { background: #33201f; color: var(--red);   border: 1px solid var(--red); }
+  .tag.s { background: #1c2933; color: var(--blue); border: 1px solid var(--blue); }
+  .note { background: var(--panel); border-left: 4px solid var(--accent); padding: 10px 16px;
+          border-radius: 0 8px 8px 0; margin: 14px 0; }
+  .warn { border-left-color: var(--amber); }
+  .crit { border-left-color: var(--red); }
+  svg { display: block; margin: 18px auto; max-width: 100%; }
+  svg text { font-family: "Segoe UI", system-ui, sans-serif; }
+
+  /* ---------- commenting layer ---------- */
+  .c-block { position: relative; border-radius: 8px; padding: 4px 10px; margin: 4px -10px;
+             transition: background 0.15s; }
+  .c-block:hover { background: rgba(77,184,168,0.05); }
+  .c-block:hover > .c-btn { opacity: 1; }
+  .c-btn { position: absolute; top: 4px; right: -34px; opacity: 0; cursor: pointer;
+           background: var(--panel2); border: 1px solid var(--accent); color: var(--accent);
+           border-radius: 6px; padding: 2px 8px; font-size: 0.85em; transition: opacity 0.15s; }
+  .c-btn.has { opacity: 1; background: var(--accent); color: var(--bg); font-weight: 700; }
+  .c-list { margin: 6px 0 2px; }
+  .c-item { background: #26221a; border: 1px solid var(--amber); border-radius: 8px;
+            padding: 7px 12px; margin: 6px 0; font-size: 0.9em; }
+  .c-item .c-meta { color: var(--amber); font-size: 0.82em; font-weight: 600; }
+  .c-item .c-del { float: right; cursor: pointer; color: var(--muted); font-size: 0.85em; }
+  .c-item .c-del:hover { color: var(--red); }
+  .c-editor { margin: 6px 0; }
+  .c-editor textarea { width: 100%; min-height: 64px; background: var(--panel2); color: var(--text);
+                       border: 1px solid var(--amber); border-radius: 8px; padding: 8px; font: inherit; }
+  .c-editor button { margin: 4px 6px 0 0; background: var(--accent); color: var(--bg); border: 0;
+                     border-radius: 6px; padding: 5px 14px; font-weight: 600; cursor: pointer; }
+  .c-editor button.cancel { background: var(--panel2); color: var(--muted); border: 1px solid var(--border); }
+  #c-toolbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel);
+               border-top: 1px solid var(--border); padding: 9px 24px; display: flex; gap: 12px;
+               align-items: center; z-index: 50; font-size: 0.9em; }
+  #c-toolbar input { background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+                     border-radius: 6px; padding: 5px 10px; font: inherit; width: 150px; }
+  #c-toolbar button { background: var(--panel2); color: var(--accent); border: 1px solid var(--accent);
+                      border-radius: 6px; padding: 5px 14px; cursor: pointer; font-weight: 600; }
+  #c-toolbar button:hover { background: var(--accent); color: var(--bg); }
+  #c-count { color: var(--amber); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Gap Implementation Plan — redesign-delivery-one</h1>
+<p class="muted">2026-06-11 · branch <code>master</code> · for Drew's review ahead of the management meeting.
+<strong>Hover any section and click the 💬 button to leave a comment.</strong> Comments persist in this browser
+and export from the bar at the bottom — send me the export and I'll fold your feedback in.</p>
+
+<div class="c-block" data-cid="exec">
+<h2>1 · Executive summary</h2>
+<p>The management flow (screenshot, steps 1–4) and the current build differ in a predictable way:
+<strong>step 3 — the onsite deploy engine — is largely done; the gaps cluster at step 1 (pre-engagement
+documentation), step 4 (as-built automation), and three specific claims the current architecture
+contradicts or doesn't yet back</strong> (no-internet operation, any-manufacturer scope, 1Password).
+This plan closes every gap with eight workstreams (G1–G8) sequenced into four sprints, folded into the
+existing three-seam integration plan. Nothing already built gets thrown away; every workstream lands in
+one of the three repos this workspace already pins.</p>
+</div>
+
+<div class="c-block" data-cid="status-map">
+<h2>2 · Management flow vs. current build</h2>
+
+<svg viewBox="0 0 1000 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Management flow steps mapped to components with build status">
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#8a9aa8"/>
+    </marker>
+  </defs>
+  <style>
+    .step { fill: #212b35; stroke: #30404d; rx: 10; }
+    .lbl  { fill: #4db8a8; font-size: 15px; font-weight: 700; }
+    .sub  { fill: #d8e1e8; font-size: 12px; }
+    .ok   { fill: #1c3329; stroke: #3fb950; }
+    .part { fill: #332b1c; stroke: #d29922; }
+    .miss { fill: #33201f; stroke: #f85149; }
+    .itm  { font-size: 11.5px; fill: #d8e1e8; }
+    .flow { stroke: #8a9aa8; stroke-width: 2; fill: none; marker-end: url(#arr); }
+  </style>
+
+  <!-- Step 1 -->
+  <rect class="step" x="20" y="20" width="225" height="500" rx="10"/>
+  <text class="lbl" x="35" y="48">STEP 1 · Design intake</text>
+  <text class="sub" x="35" y="68">diagrammer + intake</text>
+  <rect class="ok"   x="35" y="85"  width="195" height="34" rx="6"/><text class="itm" x="45" y="106">Design wizard (6 steps)</text>
+  <rect class="ok"   x="35" y="127" width="195" height="34" rx="6"/><text class="itm" x="45" y="148">Workbook intake + dry-run</text>
+  <rect class="miss" x="35" y="169" width="195" height="34" rx="6"/><text class="itm" x="45" y="190">Wizard → seeder export (G7)</text>
+  <rect class="miss" x="35" y="211" width="195" height="34" rx="6"/><text class="itm" x="45" y="232">PEQ docs: power/RU/ports (G2)</text>
+  <rect class="miss" x="35" y="253" width="195" height="34" rx="6"/><text class="itm" x="45" y="274">PEQ docs: DNS + whitelists (G2)</text>
+  <rect class="miss" x="35" y="295" width="195" height="34" rx="6"/><text class="itm" x="45" y="316">BOM / Jira import (G8)</text>
+
+  <!-- Step 2 -->
+  <rect class="step" x="270" y="20" width="210" height="500" rx="10"/>
+  <text class="lbl" x="285" y="48">STEP 2 · Source of truth</text>
+  <text class="sub" x="285" y="68">NetBox</text>
+  <rect class="ok"   x="285" y="85"  width="180" height="34" rx="6"/><text class="itm" x="295" y="106">Multitenant, slug-scoped</text>
+  <rect class="ok"   x="285" y="127" width="180" height="34" rx="6"/><text class="itm" x="295" y="148">Devicetype library import</text>
+  <rect class="ok"   x="285" y="169" width="180" height="34" rx="6"/><text class="itm" x="295" y="190">Per-node IP resolution</text>
+  <rect class="part" x="285" y="211" width="180" height="34" rx="6"/><text class="itm" x="295" y="232">Dell-only (ext. point: G9)</text>
+
+  <!-- Step 3 -->
+  <rect class="step" x="505" y="20" width="225" height="500" rx="10"/>
+  <text class="lbl" x="520" y="48">STEP 3 · Onsite deploy</text>
+  <text class="sub" x="520" y="68">deploy tool (Go exe)</text>
+  <rect class="ok"   x="520" y="85"  width="195" height="34" rx="6"/><text class="itm" x="530" y="106">7 real product flows</text>
+  <rect class="ok"   x="520" y="127" width="195" height="34" rx="6"/><text class="itm" x="530" y="148">DAG + phase-order checks</text>
+  <rect class="ok"   x="520" y="169" width="195" height="34" rx="6"/><text class="itm" x="530" y="190">Halt / resume state file</text>
+  <rect class="ok"   x="520" y="211" width="195" height="34" rx="6"/><text class="itm" x="530" y="232">Live Phase 5 validation</text>
+  <rect class="ok"   x="520" y="253" width="195" height="34" rx="6"/><text class="itm" x="530" y="274">Switch artifact capture ✓ S2</text>
+  <rect class="miss" x="520" y="295" width="195" height="34" rx="6"/><text class="itm" x="530" y="316">TRUE offline bundle (G1)</text>
+  <rect class="miss" x="520" y="337" width="195" height="34" rx="6"/><text class="itm" x="530" y="358">Human-takeover "done" (G4)</text>
+  <rect class="part" x="520" y="379" width="195" height="34" rx="6"/><text class="itm" x="530" y="400">Storage/compute artifacts (G5)</text>
+
+  <!-- Step 4 -->
+  <rect class="step" x="755" y="20" width="225" height="500" rx="10"/>
+  <text class="lbl" x="770" y="48">STEP 4 · As-builts</text>
+  <text class="sub" x="770" y="68">deploy + reparsers + 1P</text>
+  <rect class="ok"   x="770" y="85"  width="195" height="34" rx="6"/><text class="itm" x="780" y="106">Creds/validation JSON export</text>
+  <rect class="ok"   x="770" y="127" width="195" height="34" rx="6"/><text class="itm" x="780" y="148">Diagrammer zip handoff ✓ S2</text>
+  <rect class="miss" x="770" y="169" width="195" height="34" rx="6"/><text class="itm" x="780" y="190">As-built schema + import (G6)</text>
+  <rect class="miss" x="770" y="211" width="195" height="34" rx="6"/><text class="itm" x="780" y="232">1Password sync (G3)</text>
+
+  <!-- arrows -->
+  <path class="flow" d="M245,270 L268,270"/>
+  <path class="flow" d="M480,270 L503,270"/>
+  <path class="flow" d="M730,270 L753,270"/>
+
+  <!-- legend -->
+  <rect class="ok"   x="270" y="470" width="16" height="16" rx="4"/><text class="itm" x="292" y="483">built</text>
+  <rect class="part" x="350" y="470" width="16" height="16" rx="4"/><text class="itm" x="372" y="483">partial</text>
+  <rect class="miss" x="445" y="470" width="16" height="16" rx="4"/><text class="itm" x="467" y="483">gap (this plan)</text>
+</svg>
+</div>
+
+<div class="c-block" data-cid="gap-table">
+<h2>3 · The eight gap workstreams</h2>
+<table>
+<tr><th>ID</th><th>Gap</th><th>Repo</th><th>Effort</th><th>Why it matters to the promise</th></tr>
+<tr><td><strong>G1</strong></td><td>Offline deployment bundle (snapshot → air-gapped deploy)</td><td>deploy</td><td>M · 2–3d</td><td>Slide says "NO internet" — today the tool does a live NetBox pull at run start. Only promise the architecture actively contradicts.</td></tr>
+<tr><td><strong>G2</strong></td><td>PEQ documentation generator (power, RU, ports, DNS, whitelists)</td><td>deploy (py)</td><td>L · 4–6d</td><td>Step 1c has nothing behind it today. Entirely derivable from data NetBox + hardware defs already hold or can hold.</td></tr>
+<tr><td><strong>G3</strong></td><td>1Password vault sync (post-engagement)</td><td>deploy</td><td>S · 1–2d</td><td>"Every part connected to 1Password vaults."</td></tr>
+<tr><td><strong>G4</strong></td><td>Human-takeover: mark device <code>done</code> manually</td><td>deploy</td><td>S · ½d</td><td>Step 3c.i — today <code>skip</code> marks <em>failed</em>; the promise is "taken over by human."</td></tr>
+<tr><td><strong>G5</strong></td><td>Artifact capture for storage/compute (extends Seam 2)</td><td>deploy</td><td>S–M · 1–2d</td><td>Step 3e says gather logs "as needed" — switches done, rest pending.</td></tr>
+<tr><td><strong>G6</strong></td><td>As-built schema + reparsers-v2 import (= Seam 3)</td><td>reparsers + deploy</td><td>M · 2–4d</td><td>Step 4: "the program spits out the as builts." Closes the Phase 3 deferral.</td></tr>
+<tr><td><strong>G7</strong></td><td>Wizard → seeder JSON export (= Seam 1)</td><td>diagrammer + deploy</td><td>M · 2–3d</td><td>Step 1: "use the topology diagrammer to deploy products" — makes the diagrammer the actual front door.</td></tr>
+<tr><td><strong>G8</strong></td><td>BOM / Jira intake prefill</td><td>diagrammer</td><td>M · deferred</td><td>Step 1a. Needs a sample BOM/quote format first; deferred until one exists.</td></tr>
+</table>
+<p class="muted">G9 (any-manufacturer) is a positioning item, not a build item — see §6. The cluster layer
+(vCenter/vSAN, WSFC) stays a separate project per the earlier decision and is out of scope here.</p>
+</div>
+
+<h2>4 · Workstream designs</h2>
+
+<div class="c-block" data-cid="g1">
+<h3>G1 — Offline deployment bundle <span class="tag missing">gap</span> <span class="tag s">deploy · M</span></h3>
+<p>Split the engagement into an <strong>online office phase</strong> and an <strong>air-gapped site phase</strong>,
+matching slide step 3 exactly ("pull the DAG instructions and workflow from the source of truth online and
+then use that to deploy").</p>
+
+<svg viewBox="0 0 960 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Offline bundle flow">
+  <defs><marker id="arr2" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+    <path d="M0,0 L10,4 L0,8 z" fill="#4db8a8"/></marker></defs>
+  <style>
+    .lane { fill: #1a2129; stroke: #30404d; }
+    .lanelbl { fill: #8a9aa8; font-size: 13px; font-weight: 700; letter-spacing: 1px; }
+    .box { fill: #212b35; stroke: #4db8a8; stroke-width: 1.5; rx: 8; }
+    .boxr { fill: #212b35; stroke: #f85149; stroke-width: 1.5; rx: 8; }
+    .t { fill: #d8e1e8; font-size: 12.5px; }
+    .tt { fill: #4db8a8; font-size: 13px; font-weight: 700; }
+    .fl { stroke: #4db8a8; stroke-width: 2; fill: none; marker-end: url(#arr2); }
+    .lbl2 { fill: #d29922; font-size: 11.5px; font-style: italic; }
+  </style>
+  <rect class="lane" x="10" y="30" width="940" height="120" rx="10"/>
+  <text class="lanelbl" x="25" y="55">OFFICE · ONLINE</text>
+  <rect class="lane" x="10" y="180" width="940" height="120" rx="10"/>
+  <text class="lanelbl" x="25" y="205">SITE · AIR-GAPPED (db9 / RJ45 console / ethernet only)</text>
+
+  <rect class="box" x="60" y="70" width="170" height="60"/>
+  <text class="tt" x="75" y="95">NetBox</text>
+  <text class="t" x="75" y="115">tenant intent + DAG</text>
+
+  <rect class="box" x="310" y="70" width="230" height="60"/>
+  <text class="tt" x="325" y="95">orchestrator snapshot</text>
+  <text class="t" x="325" y="115">fetch → validate → seal</text>
+
+  <rect class="box" x="620" y="70" width="270" height="60"/>
+  <text class="tt" x="635" y="95">site_bundle_&lt;tenant&gt;.enc</text>
+  <text class="t" x="635" y="115">AES-GCM + HMAC, build-keyed</text>
+
+  <path class="fl" d="M230,100 L308,100"/>
+  <path class="fl" d="M540,100 L618,100"/>
+  <path class="fl" d="M755,130 L755,178"/>
+  <text class="lbl2" x="768" y="160">deployment kit: exe + .enc + ISOs + bundle</text>
+
+  <rect class="box" x="620" y="215" width="270" height="60"/>
+  <text class="tt" x="635" y="240">orchestrator deploy --offline</text>
+  <text class="t" x="635" y="260">reads bundle; zero network fetch</text>
+
+  <rect class="box" x="310" y="215" width="230" height="60"/>
+  <text class="tt" x="325" y="240">deploy + validate + capture</text>
+  <text class="t" x="325" y="260">unchanged Phase 4/5 engine</text>
+
+  <rect class="boxr" x="60" y="215" width="170" height="60"/>
+  <text class="tt" x="75" y="240" fill="#f85149">RT-2 token: DELETED</text>
+  <text class="t" x="75" y="260">no fallback, no hotspot</text>
+
+  <path class="fl" d="M618,245 L542,245"/>
+  <path class="fl" d="M308,245 L232,245"/>
+</svg>
+
+<ul>
+  <li><strong>New subcommand</strong> <code>snapshot</code>: runs the existing <code>FetchNetboxData()</code> +
+      full DAG validation, then seals the resolved <code>DeploymentPlan</code> (devices, contexts,
+      storage architecture, hardware matrix checks pre-passed) into <code>site_bundle_&lt;tenant&gt;.enc</code>
+      — same AES-GCM + HMAC pattern as <code>hardware_matrix.enc</code>, keyed to the build.</li>
+  <li><strong>Deploy mode</strong>: if a bundle sits next to the exe, it is the default source; live NetBox
+      becomes the explicit <code>--online</code> opt-in. Stale-bundle guard: warn if older than 7 days.</li>
+  <li><strong>Retires open finding RT-2</strong>: the compiled-in NetBox fallback token is deleted in the
+      same commit. The hotspot narrative leaves the docs.</li>
+  <li><strong>Acceptance</strong>: full mock deployment with the NIC disabled; unit test proving zero
+      network dials in offline mode; docs updated.</li>
+</ul>
+</div>
+
+<div class="c-block" data-cid="g2">
+<h3>G2 — PEQ documentation generator <span class="tag missing">gap</span> <span class="tag s">deploy (python) · L</span></h3>
+<p>One command, run right after seeding: <code>python peq_generator.py --tenant &lt;slug&gt;</code> →
+a customer-facing <strong>Pre-Engagement Questionnaire/Requirements doc</strong> (HTML, printable) covering
+every bullet in slide step 1c. The trick that makes this cheap: <em>almost everything is already derivable</em>
+— the only net-new data is a per-model facilities table.</p>
+<table>
+<tr><th>PEQ section</th><th>Derived from</th><th>Net-new work</th></tr>
+<tr><td>Power: total + per device, receptacle count/type, capacity headroom</td><td>New <code>facilities</code> block per model in <code>hardware_definitions.json</code> (watts typical/max, inlets, receptacle C13/C19, BTU)</td><td>Data entry for ~15 models from Dell spec sheets (the file is already hand-maintained from spec sheets — same workflow)</td></tr>
+<tr><td>Rack units total + special chassis (PowerScale deep-chassis callout)</td><td>Same facilities block (<code>rack_units</code>, <code>depth_mm</code>, flags)</td><td>Included above</td></tr>
+<tr><td>Switch ports: total + per device, by speed/media</td><td>Tenant device contexts (NIC models, port counts, VLTi/server port ranges already in NetBox)</td><td>Aggregation only</td></tr>
+<tr><td>DNS entries required</td><td>Hostnames + mgmt/cluster IPs already resolved per node by the seeder</td><td>Template: A/PTR per device, cluster FQDNs</td></tr>
+<tr><td>Network whitelists / flow requirements (intra/inter-VLAN, WAN)</td><td><strong>New:</strong> static per-product flow templates (e.g. ESXi → NTP/123, DNS/53, vCenter/443, 902; PowerStore → DNS, NTP, SMTP, support gateways), parameterized with tenant IPs</td><td>Seven product flow tables — write once, reuse on every engagement</td></tr>
+</table>
+<p><strong>Why deploy repo, not diagrammer:</strong> the seeder already owns
+<code>hardware_definitions.json</code> and the resolved per-node contexts; the PEQ is a pure function of
+NetBox tenant state, so it works for workbook-seeded projects even before G7 lands. The diagrammer can
+link to it later.</p>
+<p><strong>Acceptance:</strong> seed the test tenant → PEQ renders with non-zero power/RU/port totals,
+a DNS table matching every device, and flow tables for each product line present in the tenant; offline
+test in CI like the workbook tests.</p>
+</div>
+
+<div class="c-block" data-cid="g3">
+<h3>G3 — 1Password sync <span class="tag missing">gap</span> <span class="tag s">deploy · S</span></h3>
+<p><strong>Decision needed (see §6):</strong> the honest version of this promise is a
+<em>post-engagement sync at the office</em>, not live-onsite — 1Password needs connectivity, the site
+doesn't have any (G1's whole point). Proposed:</p>
+<ul>
+  <li><code>orchestrator sync-1password</code> reads the encrypted vault
+      (<code>credentials_vault_&lt;tenant&gt;.json.enc</code>) and creates/updates one item per device via the
+      <code>op</code> CLI (already authenticated on the office workstation): title
+      <code>&lt;tenant&gt;/&lt;device&gt;</code>, fields for username, password, OS password, final IP, serial,
+      validation status; tagged with the tenant slug.</li>
+  <li>After a verified sync, the tool offers to <strong>delete the plaintext as-built JSON</strong> —
+      strengthening the existing "merge and delete" rule rather than weakening it.</li>
+  <li>Stays out of the field exe path entirely; zero impact on the air-gap story.</li>
+</ul>
+<p><strong>Acceptance:</strong> mock <code>op</code> binary in tests; manual verification against a real
+vault once; documented in the admin guide.</p>
+</div>
+
+<div class="c-block" data-cid="g4">
+<h3>G4 — Human takeover ("done") <span class="tag missing">gap</span> <span class="tag s">deploy · S</span></h3>
+<p>At the failure prompt, add a third option alongside <code>retry</code>/<code>skip</code>:
+<code>done</code> — "I completed this device by hand." Marks the device <code>StateDone</code> with a
+<code>manual: true</code> annotation, prompts for the final credentials/IP so the vault and as-built stay
+truthful, and <strong>Phase 5 still validates it like any other device</strong> — a hand-built switch that
+fails VLT checks still turns the run red. Smallest item in the plan, directly covers slide 3c.i.</p>
+</div>
+
+<div class="c-block" data-cid="g5">
+<h3>G5 — Storage/compute artifact capture <span class="tag partial">partial</span> <span class="tag s">deploy · S–M</span></h3>
+<p>Extend Seam 2's pattern beyond switches, using sessions Phase 5 already opens. Captures land in the
+same <code>validation_artifacts/&lt;tenant&gt;/&lt;device&gt;/</code> tree and are listed in the as-built
+manifest (G6).</p>
+<table>
+<tr><th>Product</th><th>Captured via existing validation session</th></tr>
+<tr><td>ESXi</td><td><code>vmware -v</code>, <code>esxcli network vswitch standard list</code>, <code>esxcli storage core path list</code>, <code>esxcli network ip interface ipv4 get</code></td></tr>
+<tr><td>PowerStore</td><td>REST GETs: cluster, appliance, network, dns/ntp config (JSON saved verbatim)</td></tr>
+<tr><td>PowerVault ME5</td><td><code>show configuration</code>, <code>show disk-groups</code>, <code>show ports</code> (API JSON)</td></tr>
+<tr><td>PowerScale</td><td><code>isi status</code>, <code>isi network interfaces list</code>, <code>isi license list</code></td></tr>
+</table>
+</div>
+
+<div class="c-block" data-cid="g6">
+<h3>G6 — As-built schema + reparsers-v2 import (Seam 3) <span class="tag missing">gap</span> <span class="tag s">reparsers + deploy · M</span></h3>
+<p>Closes the loop on slide step 4. First task is archaeology: read reparsers-v2's document builder and
+template internals to map what it consumes today. Then:</p>
+<ul>
+  <li><strong>Schema v1</strong> (<code>docs/asbuilt_schema.md</code> in the umbrella repo): versioned JSON —
+      tenant, engineer, dates; per device: model, serial, final IPs, credentials, validation results,
+      and an <strong>artifact manifest</strong> pointing at the Seam 2/G5 captures. The deploy tool's
+      existing export is ~80% of this already; it gains the manifest and a <code>schema_version</code> field.</li>
+  <li><strong>reparsers-v2 importer</strong>: new input type that ingests the JSON + artifact directory and
+      emits the device inventory, credential appendix, and validation summary sections of the as-built;
+      the diagrammer's draw.io/PNG export drops in as the topology figure.</li>
+  <li><strong>Result</strong>: engineer returns from site with one directory; the as-built is one command.
+      "The program spits out the as builts" becomes literally true.</li>
+</ul>
+</div>
+
+<div class="c-block" data-cid="g7">
+<h3>G7 — Wizard → seeder export (Seam 1) <span class="tag missing">gap</span> <span class="tag s">diagrammer + deploy · M</span></h3>
+<p>Makes the diagrammer the front door management saw in step 1, without letting it bypass validation:</p>
+<ul>
+  <li><strong>Diagrammer</strong>: "Export deployment intent" button on the Review step — emits
+      <code>project_intent.json</code> mirroring the workbook's logical schema (project, storage architecture,
+      per-product model/count/values). Trivial to produce from wizard state.</li>
+  <li><strong>Seeder</strong>: <code>--from-json project_intent.json</code> — reuses the exact
+      validation/dry-run/push path the workbook uses (the loader logic already exists; this is a second
+      front-end onto it). The DAG checks stay mandatory regardless of entry point.</li>
+  <li>Workbook intake remains for engagements that start in Excel; both converge on the same pipeline.</li>
+</ul>
+</div>
+
+<div class="c-block" data-cid="g8">
+<h3>G8 — BOM / Jira prefill <span class="tag missing">deferred</span> <span class="tag s">diagrammer · M</span></h3>
+<p>Parse a Dell BOM/quote export to prefill wizard models and counts (Jira via CSV export of the
+engagement ticket). <strong>Deferred</strong> until we have a real BOM sample to parse — guessing the format
+is wasted work. Slot: sprint 4 or whenever a sample lands. The wizard/workbook remain the manual path
+meanwhile, so nothing blocks on this.</p>
+</div>
+
+<div class="c-block" data-cid="sequencing">
+<h2>5 · Sequencing — how this folds into the current plan</h2>
+<p>The three-seam plan stays intact; the gaps slot around it. G1 jumps to the front because it's the only
+item where the slide and the architecture actively disagree, and it deletes a standing security finding.
+The first hardware field test gates between sprints 2 and 3 — it exercises everything sprint 1–2 produce.</p>
+
+<svg viewBox="0 0 980 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sprint timeline">
+  <style>
+    .sp  { fill: #1a2129; stroke: #30404d; }
+    .sph { fill: #4db8a8; font-size: 14px; font-weight: 700; }
+    .bar { rx: 7; }
+    .b1 { fill: #1c3329; stroke: #3fb950; }
+    .b2 { fill: #1c2933; stroke: #58a6ff; }
+    .b3 { fill: #332b1c; stroke: #d29922; }
+    .bt { fill: #d8e1e8; font-size: 12px; }
+    .ms { stroke: #f85149; stroke-width: 2.5; stroke-dasharray: 7 5; }
+    .mst { fill: #f85149; font-size: 12px; font-weight: 700; }
+    .gh { fill: #8a9aa8; font-size: 11.5px; }
+  </style>
+  <text class="sph" x="20" y="28">Sprint 1 · truth-critical</text>
+  <rect class="bar b1" x="20"  y="40" width="215" height="32"/><text class="bt" x="30" y="61">G1 offline bundle + kill RT-2</text>
+  <rect class="bar b1" x="20"  y="80" width="120" height="32"/><text class="bt" x="30" y="101">G4 takeover</text>
+  <rect class="bar b1" x="150" y="80" width="85"  height="32"/><text class="bt" x="158" y="101">G5 capture</text>
+
+  <text class="sph" x="285" y="28">Sprint 2 · front end (step 1)</text>
+  <rect class="bar b2" x="285" y="40" width="215" height="32"/><text class="bt" x="295" y="61">G2 PEQ generator + facilities data</text>
+  <rect class="bar b2" x="285" y="80" width="215" height="32"/><text class="bt" x="295" y="101">G7 wizard → seeder (Seam 1)</text>
+
+  <line class="ms" x1="540" y1="15" x2="540" y2="270"/>
+  <text class="mst" x="552" y="30">FIELD TEST №1</text>
+  <text class="gh" x="552" y="48">first hardware run exercises</text>
+  <text class="gh" x="552" y="63">phases 4–5, G1, G4, G5, Seam 2</text>
+
+  <text class="sph" x="700" y="28">Sprint 3 · back end (step 4)</text>
+  <rect class="bar b3" x="700" y="40" width="250" height="32"/><text class="bt" x="710" y="61">G6 as-built schema + reparsers import</text>
+
+  <text class="sph" x="700" y="138">Sprint 4 · integrations</text>
+  <rect class="bar b3" x="700" y="150" width="160" height="32"/><text class="bt" x="710" y="171">G3 1Password sync</text>
+  <rect class="bar b3" x="700" y="190" width="200" height="32"/><text class="bt" x="710" y="211">G8 BOM prefill (needs sample)</text>
+
+  <text class="gh" x="20" y="150">Parallel / continuous:</text>
+  <rect class="bar sp" x="20" y="160" width="480" height="32" stroke="#30404d"/>
+  <text class="bt" x="30" y="181">field-test fixes take absolute priority over any sprint item</text>
+
+  <line x1="20" y1="240" x2="950" y2="240" stroke="#30404d"/>
+  <text class="gh" x="20" y="265">Dependencies: G1, G4, G5 independent → start immediately · G2 needs facilities data entry ·</text>
+  <text class="gh" x="20" y="283">G7 needs both repos but no new research · G6 blocked on reading reparsers-v2 internals first ·</text>
+  <text class="gh" x="20" y="301">G3 needs op CLI decision (§6) · G8 blocked on a real BOM sample (external)</text>
+
+  <text class="gh" x="20" y="340">Rough calendar at solo pace: sprint 1 ≈ 1 wk · sprint 2 ≈ 1.5 wk · sprint 3 ≈ 1 wk · sprint 4 ≈ 1 wk — meeting-ready demo after sprint 1.</text>
+</svg>
+
+<div class="note">
+<strong>What to demo at next week's meeting</strong> (achievable: sprint 1 + existing build):
+end-to-end on the mock tenant — workbook → NetBox → <code>snapshot</code> → pull the network cable →
+offline deploy with halt/resume and a human-takeover → validation → diagrammer ingesting the captured zip.
+That covers slide steps 2 and 3 completely, demonstrates the air-gap claim for real, and shows step 4's
+raw materials. Steps 1 and 4 are presented as this plan (sprints 2–3).
+</div>
+</div>
+
+<div class="c-block" data-cid="decisions">
+<h2>6 · Decisions I need from you</h2>
+<table>
+<tr><th>#</th><th>Decision</th><th>My recommendation</th></tr>
+<tr><td>D1</td><td><strong>1Password mechanism</strong>: <code>op</code> CLI on the office workstation vs. a 1Password Connect server</td><td><code>op</code> CLI — zero infrastructure, fits the post-engagement sync model; Connect only if the practice later wants service-account automation</td></tr>
+<tr><td>D2</td><td><strong>"Any manufacturer" phrasing</strong> for management</td><td>Say "Dell portfolio today, vendor-extensible by design" — each new product line is real deploy-flow work (~the effort one Dell line took), and promising it free undermines the credibility everything else has earned</td></tr>
+<tr><td>D3</td><td><strong>PEQ output format</strong>: HTML (printable) vs. Word</td><td>HTML first (matches the workflow docs, zero new deps); Word via reparsers-v2 later if customers require .docx</td></tr>
+<tr><td>D4</td><td><strong>Bundle staleness policy</strong>: warn vs. hard-block deploying a bundle older than N days</td><td>Warn at 7 days, block at 30 with an override prompt — sites slip, hard blocks punish the engineer</td></tr>
+<tr><td>D5</td><td><strong>BOM sample</strong>: can you get one Dell BOM/quote export + one Jira engagement ticket export?</td><td>Unblocks G8 scoping; until then it stays deferred</td></tr>
+</table>
+</div>
+
+<div class="c-block" data-cid="risks">
+<h2>7 · Risks</h2>
+<ul>
+  <li><strong>Field test №1 is the real gate.</strong> Every Phase 4/5 flow plus G1/G4/G5 are written against
+      documented device behavior; first hardware contact will find surprises. The sprint plan deliberately
+      front-loads everything the field test can exercise and keeps sprints 3–4 software-only.</li>
+  <li><strong>G2 data quality:</strong> power/RU numbers come from Dell spec sheets — same provenance and
+      maintenance burden as the existing hardware matrix. Mitigation: the facilities block is per-model and
+      versioned with the matrix seal.</li>
+  <li><strong>G6 unknowns:</strong> reparsers-v2 internals haven't been read yet; the 2–4d estimate hardens
+      after a half-day archaeology pass (first task of sprint 3, can be pulled earlier).</li>
+  <li><strong>Solo throughput:</strong> ~4.5 weeks of plan at solo pace. If the meeting creates urgency,
+      sprints 2 and 3 parallelize cleanly across two people (different repos, defined interfaces).</li>
+</ul>
+</div>
+
+</div><!-- /wrap -->
+
+<div id="c-toolbar">
+  <span>💬 <span id="c-count">0</span> comment(s)</span>
+  <input id="c-name" placeholder="Your name (Drew)" title="Stamped on new comments">
+  <button onclick="rdExport('json')">Export JSON</button>
+  <button onclick="rdExport('md')">Copy as Markdown</button>
+  <button onclick="rdClear()">Clear all</button>
+  <span class="muted" style="margin-left:auto">Comments live in this browser's localStorage — export before sharing.</span>
+</div>
+
+<script>
+(function () {
+  var KEY = 'rd1-plan-comments-v1';
+  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
+  function save(d) { localStorage.setItem(KEY, JSON.stringify(d)); refreshCount(); }
+  function refreshCount() {
+    var d = load(), n = 0;
+    Object.keys(d).forEach(function (k) { n += d[k].length; });
+    document.getElementById('c-count').textContent = n;
+  }
+  function sectionTitle(block) {
+    var h = block.querySelector('h2, h3');
+    return h ? h.textContent.replace(/\s+/g, ' ').trim() : block.dataset.cid;
+  }
+  function render(block) {
+    var cid = block.dataset.cid, d = load(), items = d[cid] || [];
+    var list = block.querySelector('.c-list');
+    if (!list) { list = document.createElement('div'); list.className = 'c-list'; block.appendChild(list); }
+    list.innerHTML = '';
+    items.forEach(function (c, i) {
+      var el = document.createElement('div');
+      el.className = 'c-item';
+      var del = document.createElement('span');
+      del.className = 'c-del'; del.textContent = '✕ delete';
+      del.onclick = function () { var dd = load(); dd[cid].splice(i, 1); if (!dd[cid].length) delete dd[cid]; save(dd); render(block); btn(block); };
+      var meta = document.createElement('div');
+      meta.className = 'c-meta'; meta.textContent = (c.who || 'reviewer') + ' · ' + c.when;
+      var body = document.createElement('div'); body.textContent = c.text;
+      el.appendChild(del); el.appendChild(meta); el.appendChild(body);
+      list.appendChild(el);
+    });
+  }
+  function btn(block) {
+    var b = block.querySelector('.c-btn');
+    var n = (load()[block.dataset.cid] || []).length;
+    b.textContent = n ? '💬 ' + n : '💬 comment';
+    b.classList.toggle('has', n > 0);
+  }
+  function openEditor(block) {
+    if (block.querySelector('.c-editor')) return;
+    var ed = document.createElement('div');
+    ed.className = 'c-editor';
+    var ta = document.createElement('textarea');
+    ta.placeholder = 'Comment on: ' + sectionTitle(block);
+    var ok = document.createElement('button'); ok.textContent = 'Save comment';
+    var no = document.createElement('button'); no.textContent = 'Cancel'; no.className = 'cancel';
+    ok.onclick = function () {
+      var t = ta.value.trim(); if (!t) return;
+      var d = load(); var cid = block.dataset.cid;
+      (d[cid] = d[cid] || []).push({
+        text: t,
+        who: document.getElementById('c-name').value.trim() || 'reviewer',
+        when: new Date().toISOString().slice(0, 16).replace('T', ' '),
+        section: sectionTitle(block)
+      });
+      save(d); ed.remove(); render(block); btn(block);
+    };
+    no.onclick = function () { ed.remove(); };
+    ed.appendChild(ta); ed.appendChild(ok); ed.appendChild(no);
+    block.appendChild(ed); ta.focus();
+  }
+  document.querySelectorAll('.c-block').forEach(function (block) {
+    var b = document.createElement('button');
+    b.className = 'c-btn'; b.type = 'button';
+    b.onclick = function () { openEditor(block); };
+    block.appendChild(b);
+    btn(block); render(block);
+  });
+  window.rdExport = function (fmt) {
+    var d = load();
+    if (fmt === 'json') {
+      var blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'implementation_plan_comments.json';
+      a.click();
+    } else {
+      var out = '# Review comments — implementation plan\n\n';
+      Object.keys(d).forEach(function (cid) {
+        d[cid].forEach(function (c) {
+          out += '## ' + (c.section || cid) + '\n' + '*' + (c.who || 'reviewer') + ' · ' + c.when + '*\n\n' + c.text + '\n\n';
+        });
+      });
+      navigator.clipboard.writeText(out).then(function () { alert('Markdown copied to clipboard.'); });
+    }
+  };
+  window.rdClear = function () {
+    if (!confirm('Delete ALL comments?')) return;
+    localStorage.removeItem(KEY);
+    document.querySelectorAll('.c-block').forEach(function (block) { render(block); btn(block); });
+    refreshCount();
+  };
+  refreshCount();
+})();
+</script>
+</body>
+</html>
