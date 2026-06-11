@@ -30,17 +30,19 @@ diagrammer Wizard
 
 ## Integration seams (active work)
 
-### Seam 1 — Validation artifacts → diagrammer
-During Phase 5 OS10 validation the deploy tool captures `show running-config`, `show lldp neighbor`,
-and `show mac address-table` into `validation_artifacts/<tenant>/<switch>/`. These are exactly the
-input that `diagrammer/backend/parsers.py` already understands — producing an as-deployed diagram
-automatically after every deployment run.
-
-### Seam 2 — Diagrammer Wizard → seeder
+### Seam 1 — Diagrammer Wizard → seeder
 The diagrammer Wizard already collects switches, L3 config, and cabling — the same data the intake
 workbook captures. A `--from-json` path in `deploy/devops_netbox_seeder.py` allows the diagrammer
 to export a project-intent JSON that flows through the seeder's validation/dry-run/push pipeline
 without bypassing DAG checks.
+
+### Seam 2 — Validation artifacts → diagrammer ✅ DONE
+During Phase 5 switch validation the deploy tool captures the TSR-equivalent CLI set (11 files for
+OS10, 5 for SONiC) into `validation_artifacts/<tenant>/<switch>/cli_output/` and packs a
+`<switch>_diagrammer.zip` whose entry layout matches what `diagrammer/backend/archive_handler.py`
+ingests. Drop the zip into the diagrammer for an as-deployed topology diagram — no tech-support
+bundle pull needed. Handoff verified end-to-end against the diagrammer's real parsers
+(deploy commit `f068184`).
 
 ### Seam 3 — Deploy tool → reparsers-v2
 `asbuilt_credentials_<tenant>.json` (produced at end of every deployment run) feeds reparsers-v2
