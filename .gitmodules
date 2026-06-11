@@ -1,0 +1,9 @@
+[submodule "deploy"]
+	path = deploy
+	url = https://github.com/cactiexchange/DrewsDatacenterDeployV5.git
+[submodule "diagrammer"]
+	path = diagrammer
+	url = https://github.com/cactiexchange/os10-diagrammer-v2.git
+[submodule "reparsers"]
+	path = reparsers
+	url = https://github.com/cactiexchange/reparsers-v2.git
