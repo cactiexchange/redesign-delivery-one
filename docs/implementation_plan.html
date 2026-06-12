@@ -531,8 +531,19 @@ hand-built. It's flagged <code>unverified_model: true</code> for now — confirm
 <script>
 (function () {
   var KEY = 'rd1-plan-comments-v1';
-  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
-  function save(d) { localStorage.setItem(KEY, JSON.stringify(d)); refreshCount(); }
+  var mem = {};  // fallback when localStorage is unavailable (file:// hardening, sandboxed viewers)
+  function store() { try { return window.localStorage; } catch (e) { return null; } }
+  function load() {
+    var s = store();
+    try { return (s ? JSON.parse(s.getItem(KEY)) : mem[KEY] && JSON.parse(mem[KEY])) || {}; }
+    catch (e) { return {}; }
+  }
+  function save(d) {
+    var s = store();
+    try { if (s) s.setItem(KEY, JSON.stringify(d)); else mem[KEY] = JSON.stringify(d); }
+    catch (e) { mem[KEY] = JSON.stringify(d); }
+    refreshCount();
+  }
   function refreshCount() {
     var d = load(), n = 0;
     Object.keys(d).forEach(function (k) { n += d[k].length; });
@@ -616,7 +627,8 @@ hand-built. It's flagged <code>unverified_model: true</code> for now — confirm
   };
   window.rdClear = function () {
     if (!confirm('Delete ALL comments?')) return;
-    localStorage.removeItem(KEY);
+    try { var s = store(); if (s) s.removeItem(KEY); } catch (e) {}
+    delete mem[KEY];
     document.querySelectorAll('.c-block').forEach(function (block) { render(block); btn(block); });
     refreshCount();
   };
