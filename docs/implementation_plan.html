@@ -173,7 +173,7 @@ researched facilities data for all 26 models and the product onboarding guide.</
 <h2>3 · The eight gap workstreams</h2>
 <table>
 <tr><th>ID</th><th>Gap</th><th>Repo</th><th>Effort</th><th>Why it matters to the promise</th></tr>
-<tr><td><strong>G1</strong></td><td>Check-in / check-out session model (online bookends, air-gapped middle)</td><td>deploy</td><td>M · 2–3d</td><td>Slide 3a: internet only at initial check-in (pull intent + DAG) and final check-out (export as-built materials). Mid-deployment never needs a connection. Kills the RT-2 fallback token.</td></tr>
+<tr><td><strong>G1</strong></td><td>Check-in / check-out session model (online bookends, air-gapped middle) <span class="tag built">DONE</span></td><td>deploy</td><td>shipped 2026-06-12</td><td>Landed as deploy commit <code>750b836</code>: <code>check-in</code> / offline default / <code>--online</code> / <code>check-out</code>; D4 staleness; RT-2 fallback token deleted; air-gap pinned by a tripwired-transport test; verified end-to-end without hardware.</td></tr>
 <tr><td><strong>G2</strong></td><td>PEQ documentation generator (power, RU, ports, DNS, whitelists)</td><td>deploy (py)</td><td>M · 3–4d <span class="tag built">data ✓</span></td><td>Step 1c. Facilities data for all 26 models now researched and committed (<code>docs/facilities_sources.md</code>) — remaining work is the generator + per-product flow templates.</td></tr>
 <tr><td><strong>G3</strong></td><td>Randomized unique per-device passwords; local vault default, 1Password optional backend</td><td>deploy</td><td>M · 2–3d</td><td>Drew's rule: every device/service gets a different random password, nothing reused. Local encrypted vault stays the default; 1Password is a pluggable backend for every password-touching step.</td></tr>
 <tr><td><strong>G4</strong></td><td>Full step control: interrupt / resume / skip / go back / redo / human-takeover</td><td>deploy</td><td>S–M · 1–2d</td><td>Step 3c: resume exists; this adds <code>done</code> (human completed it), <code>redo</code> (re-run a completed device), and a device-picker to jump anywhere in the plan.</td></tr>
@@ -190,7 +190,7 @@ earlier decision and is out of scope here.</p>
 <h2>4 · Workstream designs</h2>
 
 <div class="c-block" data-cid="g1">
-<h3>G1 — Check-in / check-out session model <span class="tag missing">gap</span> <span class="tag s">deploy · M</span></h3>
+<h3>G1 — Check-in / check-out session model <span class="tag built">DONE · deploy 750b836</span></h3>
 <p><em>(v2: revised from "true offline" per Drew — online check-in and check-out are fine; only the
 middle must work with zero internet.)</em> The engagement becomes a three-phase session:
 <strong>check-in</strong> (online: pull tenant intent + DAG from NetBox, validate, cache locally as the
