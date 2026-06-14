@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo Walkthrough — DrewsDatacenterDeploy V5 ecosystem</title>
+<style>
+  :root { --bg:#0f1419; --panel:#1a2129; --panel2:#212b35; --text:#d8e1e8; --muted:#8a9aa8;
+          --accent:#4db8a8; --green:#3fb950; --amber:#d29922; --red:#f85149; --blue:#58a6ff; --border:#30404d; }
+  * { box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:"Segoe UI",system-ui,sans-serif; margin:0; line-height:1.55; }
+  .wrap { max-width:1000px; margin:0 auto; padding:32px 40px 100px; }
+  h1 { color:var(--accent); border-bottom:2px solid var(--accent); padding-bottom:8px; }
+  h2 { color:var(--accent); margin-top:1.8em; }
+  h3 { color:var(--blue); margin-top:1.3em; font-size:1.05em; }
+  code { background:var(--panel2); padding:1px 6px; border-radius:4px; color:#e3b341; font-size:0.92em; }
+  pre { background:var(--panel2); padding:12px 16px; border-radius:8px; overflow-x:auto; border:1px solid var(--border); font-size:0.88em; }
+  .step { background:var(--panel); border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:0 8px 8px 0; padding:14px 18px; margin:16px 0; }
+  .step .n { display:inline-block; background:var(--accent); color:var(--bg); font-weight:700; border-radius:50%; width:26px; height:26px; text-align:center; line-height:26px; margin-right:8px; }
+  .proves { color:var(--green); font-size:0.92em; margin-top:6px; }
+  .proves::before { content:"Proves: "; color:var(--muted); font-weight:600; }
+  .say { color:var(--blue); font-size:0.92em; margin-top:4px; font-style:italic; }
+  .say::before { content:"Say: "; color:var(--muted); font-weight:600; font-style:normal; }
+  .note { background:var(--panel); border-left:4px solid var(--amber); padding:10px 16px; border-radius:0 8px 8px 0; margin:14px 0; }
+  .crit { border-left-color:var(--red); }
+  table { border-collapse:collapse; width:100%; margin:12px 0; font-size:0.9em; }
+  th { background:var(--panel2); color:var(--accent); text-align:left; }
+  th,td { border:1px solid var(--border); padding:7px 11px; vertical-align:top; }
+  a { color:var(--blue); }
+  .muted { color:var(--muted); }
+  .tag { display:inline-block; padding:1px 8px; border-radius:10px; font-size:0.78em; font-weight:600; background:#1c3329; color:var(--green); border:1px solid var(--green); }
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>Demo Walkthrough</h1>
+<p class="muted">A presenter script for showing the deployment ecosystem before the first hardware
+field test. Everything here runs <strong>without datacenter hardware</strong>. Sample artifacts in this
+folder let you present even without running anything live.</p>
+
+<div class="note crit"><strong>The one honest caveat, stated up front:</strong> with no hardware on the
+bench, the per-device deploy and validation steps will <em>attempt</em> real procedures and then correctly
+report the devices as unreachable. That is the point — the tool never fakes success. The demo shows the
+<strong>orchestration machinery</strong> (intake, validation, sessions, the air-gap, passwords, step
+control, check-out, the customer deliverables) working end to end; a successful rack is what the field
+test proves. Frame it that way and the "failures" become a feature ("watch it refuse to lie").</p></div>
+
+<h2>What's in this folder</h2>
+<table>
+<tr><th>File</th><th>What it is</th><th>How it was made</th></tr>
+<tr><td><a href="sample_peq.html">sample_peq.html</a></td><td>A customer Pre-Engagement Requirements doc for a 11-device project</td><td>Real output of <code>peq_generator.py</code></td></tr>
+<tr><td><a href="sample_intent.json">sample_intent.json</a></td><td>A diagrammer wizard export (Seam 1)</td><td>Validated through the seeder — seeds cleanly</td></tr>
+<tr><td><a href="sample_checkout/manifest.json">sample_checkout/manifest.json</a></td><td>A check-out deployment manifest (non-secret)</td><td>Real output of the deploy tool's check-out</td></tr>
+<tr><td>sample_checkout/asbuilt_credentials_project-gotham.json</td><td>The plaintext as-built credential record</td><td>Real output (demo passwords)</td></tr>
+</table>
+<p class="muted">Tenant used throughout: <code>project-gotham</code> — 2 OS10 switches, 1 customer switch,
+3 PowerEdge R770, 1 PowerStore 3200T, 4 PowerScale H7100 (deep-chassis + high-line, so the PEQ warnings fire).</p>
+
+<h2>Track A — Customer / management deliverables <span class="tag">fully real</span></h2>
+<p>These are genuine artifacts a customer receives. No caveats — show them as finished products.</p>
+
+<div class="step">
+<div><span class="n">1</span><strong>Show the Pre-Engagement Requirements doc</strong></div>
+<p>Open <a href="sample_peq.html">sample_peq.html</a> in a browser (or generate live:
+<code>python peq_generator.py --tenant project-gotham</code>).</p>
+<div class="proves">step 1 of the management flow — the project now auto-produces the customer's power, rack, port, DNS, and firewall-flow requirements from the design. This box on the slide previously had nothing behind it.</div>
+<div class="say">"Before anyone drives to site, the customer gets exactly what to provision — including that two of these models need 200-240V and one chassis is too deep for a standard rack. The tool caught both."</div>
+</div>
+
+<div class="step">
+<div><span class="n">2</span><strong>Show intake → NetBox (the dry-run diff)</strong></div>
+<pre>python devops_netbox_seeder.py --from-json demo/sample_intent.json --dry-run</pre>
+<p>Or the workbook path: <code>--template project.xlsx</code> then <code>--from-xlsx project.xlsx --dry-run</code>.</p>
+<div class="proves">the design becomes the source of truth, validated. The dry-run prints a CREATE/UPDATE/UNCHANGED diff and the DAG rejects impossible designs before anything is written.</div>
+<div class="say">"Whether the design comes from the diagrammer or a spreadsheet, it lands in NetBox through one validating gate. Try to put 1 PowerScale node where 3 are required and it stops you here, not on site."</div>
+</div>
+
+<h2>Track B — The air-gap walkthrough <span class="tag">orchestration real, devices absent</span></h2>
+<p>This is the memorable one. Have a <strong>freshly seeded tenant</strong> ready (the stale mock tenants
+predate the current schema). The cable-pull is the moment that lands.</p>
+
+<div class="step">
+<div><span class="n">3</span><strong>Check-in (online)</strong></div>
+<pre>set NETBOX_TOKEN=&lt;token&gt;
+deploy.exe check-in
+-&gt; Enter Target Sequence Identifier: project-gotham</pre>
+<div class="proves">the engagement is sealed into one encrypted bundle. Internet is needed now and never again until check-out.</div>
+<div class="say">"This is the only time the laptop touches the internet on the way in. It pulls the design, validates it against the hardware rules, and seals it."</div>
+</div>
+
+<div class="step">
+<div><span class="n">4</span><strong>Pull the network cable.</strong> Physically. In front of the room.</div>
+<div class="proves">everything from here is air-gapped — the literal promise to upper management.</div>
+<div class="say">"From here we're the L2 engineer on a datacenter floor with no internet. Watch what still works."</div>
+</div>
+
+<div class="step">
+<div><span class="n">5</span><strong>Run the offline deploy</strong></div>
+<pre>deploy.exe</pre>
+<p>Walk through what appears: the bundle loads and re-validates offline; customer-provided switches are
+listed first with recommended port configs (we don't configure them); deployment proceeds in enforced
+order (network → storage → compute); each device generates a <strong>unique random password</strong> shown
+once; the per-device prompt offers <code>y / N / done</code>; the control menu allows <code>skip</code>,
+<code>redo</code>, and hand-takeover.</p>
+<div class="proves">the full orchestration runs with zero network: sessions, phase ordering, password generation, step control, customer-switch handling. Devices report unreachable — correctly, because none are on the bench.</div>
+<div class="say">"It's driving the real OS10 console dialog, the real Redfish ISO install, the real PowerStore REST sequence. With no array answering, it stops and shows the transcript instead of pretending. That honesty is the whole design."</div>
+</div>
+
+<div class="step">
+<div><span class="n">6</span><strong>Reconnect the cable, then check-out</strong></div>
+<pre>set NETBOX_TOKEN=&lt;write-token&gt;
+deploy.exe check-out</pre>
+<p>Then open <a href="sample_checkout/manifest.json">sample_checkout/manifest.json</a> to show the
+output shape (per-device status incl. a <code>manual</code> takeover, validation results, artifact
+inventory) and note the credentials JSON that feeds the as-built.</p>
+<div class="proves">step 4 of the management flow — the run reports per-device status back to NetBox (Active + a journal entry) and packages the as-built materials for the document generator.</div>
+<div class="say">"Back online, it writes the outcome of every device back to the source of truth and hands a complete record to the as-built generator. One engagement, fully closed-loop."</div>
+</div>
+
+<h2>Track C — Needs a machine with Node (you, not the slide deck)</h2>
+<p>The <strong>diagrammer wizard</strong> (design → export → seed) is a complete Seam 1 demo, but it needs
+a Node build (<code>npm install &amp;&amp; npm run dev</code> in <code>diagrammer/</code>). Show the 6-step
+wizard, tick a switch as customer-provided (it renders amber/dashed), and hit <strong>Export Deployment
+Intent</strong> — the file it downloads is exactly the <a href="sample_intent.json">sample_intent.json</a>
+shape, which then flows through Track A step 2.</p>
+
+<h2>Suggested 10-minute cut</h2>
+<table>
+<tr><th>Min</th><th>Do</th></tr>
+<tr><td>0–2</td><td>Open the PEQ (Track A.1). "Here's what the customer gets before we travel."</td></tr>
+<tr><td>2–4</td><td>Intake dry-run (Track A.2). "Design → validated source of truth."</td></tr>
+<tr><td>4–5</td><td>Check-in, then <strong>pull the cable</strong> (Track B.3–4).</td></tr>
+<tr><td>5–8</td><td>Offline deploy (Track B.5) — passwords, phases, step control, honest device failures.</td></tr>
+<tr><td>8–10</td><td>Reconnect, check-out, show the manifest (Track B.6). Close on "field test proves the last mile."</td></tr>
+</table>
+
+<div class="note"><strong>Setup checklist:</strong> a minted <code>deploy.exe</code> + <code>hardware_matrix.enc</code>;
+a NetBox token; one freshly seeded demo tenant; this folder open in a browser; and — for the cable-pull —
+a laptop you can actually disconnect (mobile hotspot off too). If the license check shows a Challenge Code
+when offline, that's expected (Cloudflare time is unreachable) — have the NOC override ready, or pre-warm
+the license before the room.</div>
+
+<p class="muted" style="margin-top:3em">Audience guides for the people who run this day-to-day:
+<a href="../docs/guides/index.html">docs/guides/index.html</a>.</p>
+
+</div></body></html>

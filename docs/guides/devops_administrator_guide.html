@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevOps Administrator Guide — Redesign Delivery One</title>
+<style>
+  :root { --bg:#0f1419; --panel:#1a2129; --panel2:#212b35; --text:#d8e1e8; --muted:#8a9aa8;
+          --accent:#4db8a8; --green:#3fb950; --amber:#d29922; --red:#f85149; --blue:#58a6ff; --border:#30404d; }
+  * { box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:"Segoe UI",system-ui,sans-serif; margin:0; line-height:1.55; }
+  .wrap { max-width:1000px; margin:0 auto; padding:32px 40px 100px; }
+  h1 { color:var(--accent); border-bottom:2px solid var(--accent); padding-bottom:8px; }
+  h2 { color:var(--accent); margin-top:1.9em; }
+  h3 { color:var(--blue); margin-top:1.3em; font-size:1.05em; }
+  code { background:var(--panel2); padding:1px 6px; border-radius:4px; color:#e3b341; font-size:0.92em; }
+  pre { background:var(--panel2); padding:12px 16px; border-radius:8px; overflow-x:auto; border:1px solid var(--border); font-size:0.88em; }
+  table { border-collapse:collapse; width:100%; margin:12px 0; font-size:0.9em; }
+  th { background:var(--panel2); color:var(--accent); text-align:left; }
+  th,td { border:1px solid var(--border); padding:7px 11px; vertical-align:top; }
+  .note { background:var(--panel); border-left:4px solid var(--accent); padding:10px 16px; border-radius:0 8px 8px 0; margin:14px 0; }
+  .warn { border-left-color:var(--amber); } .crit { border-left-color:var(--red); }
+  a { color:var(--blue); } .muted { color:var(--muted); }
+  .toc { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:10px 22px; }
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>DevOps Administrator Guide</h1>
+<p class="muted">For the person who prepares deployments and maintains the toolchain — seeding NetBox,
+generating customer docs, minting field binaries, maintaining the hardware matrix, onboarding new
+products, and running the as-built pipeline. Companions:
+<a href="system_administrator_guide.html">System Admin</a> ·
+<a href="field_engineer_guide.html">Field Engineer</a>. All commands run from the <code>deploy/</code> repo
+root unless noted.</p>
+
+<div class="toc">
+<strong>Contents</strong>
+<ol>
+<li><a href="#prereq">One-time setup</a></li>
+<li><a href="#seed">Seeding a project into NetBox</a></li>
+<li><a href="#peq">Generating the customer requirements (PEQ)</a></li>
+<li><a href="#mint">Minting an engineer binary &amp; the matrix</a></li>
+<li><a href="#noc">NOC override duty</a></li>
+<li><a href="#matrix">Maintaining the hardware matrix</a></li>
+<li><a href="#onboard">Onboarding new products (G9)</a></li>
+<li><a href="#asbuilt">The as-built pipeline (check-out → reparsers-v2)</a></li>
+<li><a href="#ci">CI / parity checks</a></li>
+</ol>
+</div>
+
+<h2 id="prereq">1 · One-time setup</h2>
+<pre>pip install -r requirements.txt        # pynetbox, openpyxl
+go version                              # for building the field exe (Go toolchain)</pre>
+<p>Set NetBox access for the admin scripts:</p>
+<pre>set NETBOX_URL=https://&lt;your-netbox&gt;
+set NETBOX_TOKEN=&lt;admin-token&gt;</pre>
+<div class="warn note"><strong>Token hygiene (RT-2):</strong> the Python admin scripts historically carried a
+default token. Rotate it and rely on <code>NETBOX_TOKEN</code>. The field binary no longer embeds any
+fallback.</div>
+
+<h2 id="seed">2 · Seeding a project into NetBox</h2>
+<p>Three intake paths, all converging on one validating push (<code>push_to_netbox</code>). Always
+<code>--dry-run</code> first — it prints a CREATE/UPDATE/UNCHANGED diff and writes nothing.</p>
+<h3>a. Workbook (preferred for anything sizable)</h3>
+<pre>python devops_netbox_seeder.py --template project.xlsx        # blank, one sheet per product line
+# architect fills Model + Count + values
+python devops_netbox_seeder.py --from-xlsx project.xlsx --dry-run
+python devops_netbox_seeder.py --from-xlsx project.xlsx       # push</pre>
+<p>The workbook is generated from <code>seeder_ui_dag.json</code>, so it can never drift from what the
+seeder expects.</p>
+<h3>b. Diagrammer export (Seam 1)</h3>
+<pre>python devops_netbox_seeder.py --from-json intent.json --dry-run
+python devops_netbox_seeder.py --from-json intent.json</pre>
+<p>The diagrammer's wizard exports <code>intent.json</code> (models, counts, customer switches, VLT/BGP).
+The seeder validates it and reports any per-device deployment IPs the wizard didn't capture — fill those
+in the JSON or finish in the workbook.</p>
+<h3>c. Interactive (small edits)</h3>
+<pre>python devops_netbox_seeder.py</pre>
+<div class="note"><strong>Customer-provided switches:</strong> use the <em>Customer Switch</em> line (port
+count + types + recommended VLAN/MTU). They land under a distinct manufacturer + grey role, are flagged
+<code>customer_provided</code>, and the deploy tool advises on but never configures them.</div>
+<p>Add <code>--append</code> to require an existing tenant (adds devices to a project mid-stream).</p>
+
+<h2 id="peq">3 · Generating the customer requirements (PEQ)</h2>
+<pre>python peq_generator.py --tenant project-&lt;name&gt;     # -> peq_project-&lt;name&gt;.html</pre>
+<p>Produces a customer-facing HTML doc: power/cooling (peak/typical W, BTU/hr, receptacle count by type),
+rack space (with deep-chassis warnings), switch ports (demand vs customer supply), DNS entries, and
+firewall flow tables. Multi-node Gen6 chassis are grouped so power isn't over-counted. Send it to the
+customer to provision the site before the engagement. Power is planning-grade — confirm with Dell ESSA
+for contract sizing.</p>
+
+<h2 id="mint">4 · Minting an engineer binary &amp; the matrix</h2>
+<p>Each engineer gets a uniquely compiled exe. First seal the hardware matrix, then mint:</p>
+<pre>python dag_swarm_orchestrator.py            # -> hardware_matrix.enc (plaintext shredded)
+go run .\cmd\admin\admin_builder.go         # prompts: engineer name, expiry (YYYY-MM-DD)</pre>
+<p>Hand the engineer <strong>both</strong> <code>datacenter_orchestrator_&lt;Name&gt;.exe</code> and
+<code>hardware_matrix.enc</code> (same folder). Inject a tenant-scoped token at mint time, or have the
+engineer set <code>NETBOX_TOKEN</code>. Remember: <strong>check-out needs a write-scoped token</strong>
+(dcim.device + extras.journalentry); check-in only needs read.</p>
+<div class="note"><strong>Bundles are build-bound.</strong> A session bundle only opens in the exe that
+created it. Each engineer checks in their own projects.</div>
+
+<h2 id="noc">5 · NOC override duty</h2>
+<p>When an engineer is offline at unlock, the exe shows a Challenge Code (e.g. <code>Drew-483291</code>).</p>
+<pre>go run .\cmd\admin\admin_builder.go respond     # select the build; reads back the 6-digit code</pre>
+<p>The code is <code>HMAC-SHA256(BuildSecret, challenge)</code>. There is no master keyword. Log each
+override in the engagement ticket. <em>Note:</em> on many networks the time-check can't reach Cloudflare, so
+this happens on most cold starts — it's expected, not a fault.</p>
+
+<h2 id="matrix">6 · Maintaining the hardware matrix</h2>
+<p><code>hardware_definitions.json</code> is the per-model source of truth: deployment limits (NICs, NVMe
+capacity, firmware floors, RAM, cluster bounds) <strong>and</strong> a <code>facilities</code> block (rack
+units, depth, PSU count/watts, inlet/receptacle, watts, BTU, voltage) the PEQ consumes. After any edit:</p>
+<pre>python dag_swarm_orchestrator.py                 # re-seal hardware_matrix.enc
+python scripts/build_custom_device_types.py      # sync NetBox device types (u_height from facilities)
+python scripts/ci_hardware_sync_checker.py       # matrix <-> docs parity
+python scripts/test_workbook_intake.py           # intake regression
+python scripts/test_peq_generator.py             # PEQ regression</pre>
+<p>Facilities research method and sources are in <code>docs/facilities_sources.md</code>.</p>
+
+<h2 id="onboard">7 · Onboarding new products (G9)</h2>
+<p>Full guide: <code>deploy/docs/product_onboarding.md</code>. Three tiers:</p>
+<table>
+<tr><th>Tier</th><th>What</th><th>Effort</th></tr>
+<tr><td>1</td><td>New model in a known family</td><td>Pure JSON: add to <code>hardware_definitions.json</code> (+ facilities) and re-seal. No compile.</td></tr>
+<tr><td>2</td><td>New NIC / card / module</td><td>Append to the model's <code>supported_nics</code> + the <code>nic_model</code> prompt options. No compile.</td></tr>
+<tr><td>3</td><td>New product line (incl. non-Dell)</td><td>One Go deploy-flow file + a 13-step checklist (fetch fields, phase, factory creds, deploy fn, validator, artifacts, docs, tests). Budget what one Dell line took, plus a field test.</td></tr>
+</table>
+<p>Un-onboarded cards are blocked at intake by the DAG — that's the safety net working, not a bug.</p>
+
+<h2 id="asbuilt">8 · The as-built pipeline (check-out → reparsers-v2)</h2>
+<p>The engineer's check-out produces <code>checkout_&lt;tenant&gt;/</code>: a non-secret
+<code>manifest.json</code> (deployment record + artifact inventory) and the plaintext
+<code>asbuilt_credentials_&lt;tenant&gt;.json</code>. Both carry <code>schema_version</code>. These, plus any
+vendor TSRs, feed reparsers-v2 to produce the customer's as-built Word document.</p>
+<p>The shared contract and the planned <code>--asbuilt</code> importer are documented in
+<a href="../asbuilt_schema.md">docs/asbuilt_schema.md</a>. Until the importer lands (gated on the first
+real check-out package), merge the credential record into the as-built manually and then delete it.</p>
+<div class="crit note"><strong>Plaintext handling:</strong> the credentials JSON and any kickstart ISO embed
+real passwords. Merge and delete; or have the engineer flush to 1Password at check-out
+(<code>--sync-1password</code>) and delete. Never commit either.</div>
+
+<h2 id="ci">9 · CI / parity checks</h2>
+<table>
+<tr><th>Check</th><th>Command</th></tr>
+<tr><td>Matrix ↔ docs parity</td><td><code>python scripts/ci_hardware_sync_checker.py</code></td></tr>
+<tr><td>Workbook + customer-switch intake</td><td><code>python scripts/test_workbook_intake.py</code></td></tr>
+<tr><td>JSON intake (Seam 1)</td><td><code>python scripts/test_json_intake.py</code></td></tr>
+<tr><td>PEQ generator</td><td><code>python scripts/test_peq_generator.py</code></td></tr>
+<tr><td>Go suite (orchestrator)</td><td><code>go vet ./... &amp;&amp; go test ./...</code></td></tr>
+</table>
+<p>Run the relevant set after any matrix, seeder, or orchestrator change.</p>
+
+<p class="muted" style="margin-top:3em">Deeper references in the deploy repo: <code>docs/admin_guide.md</code>,
+<code>docs/product_onboarding.md</code>, <code>docs/facilities_sources.md</code>, <code>docs/supported_models.md</code>.</p>
+
+</div></body></html>

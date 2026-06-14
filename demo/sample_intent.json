@@ -1,0 +1,54 @@
+{
+  "project_name": "project-gotham",
+  "storage_architecture": "vsan_primary",
+  "devices": {
+    "PowerSwitch (OS10)": {
+      "model": "PowerSwitch S5248F-ON (OS10)",
+      "count": 2,
+      "values": {
+        "switch_mgmt_ip": "10.20.1.",
+        "vlt_domain": "100",
+        "vlt_backup_ip_base": "10.20.1.",
+        "vlti_ports": "ethernet1/1/53,ethernet1/1/54",
+        "server_ports": "1-40"
+      }
+    },
+    "Customer Switch": {
+      "model": "Customer-Provided Switch",
+      "count": 1,
+      "values": {
+        "port_count": 48,
+        "port_types": "48x 25GbE, 8x 100GbE",
+        "recommended_mgmt_vlan": "100",
+        "recommended_storage_vlan": "101",
+        "recommended_mtu": "9216"
+      }
+    },
+    "PowerEdge": {
+      "model": "PowerEdge R770",
+      "count": 3,
+      "values": {
+        "idrac_ip": "10.20.9.",
+        "esxi_mgmt_ip": "10.20.2.",
+        "nvme_capacity_tb": 60,
+        "nic_model": "Mellanox ConnectX-7 Dual Port 100GbE",
+        "esxi_mgmt_vlan": "100",
+        "vmotion_vlan": "102",
+        "ntp_dns": "10.20.0.2"
+      }
+    },
+    "PowerStore": {
+      "model": "PowerStore 3200T",
+      "count": 1,
+      "values": {
+        "mgmt_cluster_ip": "10.20.3.10",
+        "appliance_ips": "10.20.3.11,10.20.3.12",
+        "storage_vlan": "101",
+        "frontend_ports": "100GbE",
+        "jumbo_frames_mtu": "9000",
+        "dns_servers": "10.20.0.2",
+        "ntp_servers": "10.20.0.3"
+      }
+    }
+  }
+}

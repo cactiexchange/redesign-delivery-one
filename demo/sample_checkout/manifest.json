@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "tenant": "project-gotham",
+  "engineer": "Drew Smith",
+  "generated_at": "2026-06-14T06:44:53.6934608Z",
+  "devices": [
+    {
+      "name": "project-gotham-os10-01",
+      "model": "PowerSwitch S5248F-ON (OS10)",
+      "serial": "CN0AB01",
+      "final_mgmt_ip": "10.20.1.10",
+      "deploy_status": "done",
+      "attempts": 1,
+      "last_update": "2026-06-13T23:44:53.6794976-07:00",
+      "validation_overall": "pass",
+      "validation_checks": [
+        "VLT 100 peer status: pass (peer up)",
+        "show port-channel summary: pass (12 lines collected)"
+      ]
+    },
+    {
+      "name": "project-gotham-os10-02",
+      "model": "PowerSwitch S5248F-ON (OS10)",
+      "serial": "CN0AB02",
+      "final_mgmt_ip": "10.20.1.11",
+      "deploy_status": "done",
+      "attempts": 1,
+      "last_update": "2026-06-13T23:44:53.6800023-07:00",
+      "validation_overall": "pass",
+      "validation_checks": [
+        "VLT 100 peer status: pass (peer up)"
+      ]
+    },
+    {
+      "name": "project-gotham-esxi-01",
+      "model": "PowerEdge R770",
+      "serial": "CN0PE01",
+      "final_mgmt_ip": "10.20.2.10",
+      "deploy_status": "done",
+      "manual": true,
+      "attempts": 1,
+      "last_update": "2026-06-13T23:44:53.6800023-07:00",
+      "validation_overall": "pass",
+      "validation_checks": [
+        "SSH login (root): pass (VMware ESXi 8.0.3)",
+        "storage paths: skipped (vsan_primary: paths form at cluster layer)"
+      ]
+    },
+    {
+      "name": "project-gotham-powerstore-01",
+      "model": "PowerStore 3200T",
+      "serial": "CN0PS01",
+      "final_mgmt_ip": "10.20.3.10",
+      "deploy_status": "done",
+      "attempts": 1,
+      "last_update": "2026-06-13T23:44:53.6810545-07:00",
+      "validation_overall": "pass",
+      "validation_checks": [
+        "cluster health (REST): pass (cluster \"gotham-ps\" state=Configured)"
+      ]
+    },
+    {
+      "name": "project-gotham-customer-01",
+      "model": "Customer-Provided Switch",
+      "deploy_status": "pending",
+      "attempts": 0,
+      "last_update": "0001-01-01T00:00:00Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "project-gotham/project-gotham-os10-01/cli_output/show-vlt-all.txt",
+      "bytes": 31,
+      "mod_time": "2026-06-13T23:44:53.6843775-07:00"
+    },
+    {
+      "path": "project-gotham/project-gotham-os10-01_diagrammer.zip",
+      "bytes": 8,
+      "mod_time": "2026-06-13T23:44:53.6843775-07:00"
+    },
+    {
+      "path": "project-gotham/project-gotham-powerstore-01/api_output/powerstore-cluster.json",
+      "bytes": 41,
+      "mod_time": "2026-06-13T23:44:53.6859419-07:00"
+    }
+  ]
+}

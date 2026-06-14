@@ -28,11 +28,18 @@ diagrammer Wizard
    Final as-built document
 ```
 
+## Documentation & demo
+
+- **[docs/guides/index.html](docs/guides/index.html)** — role guides for the **System Administrator**,
+  **Field Engineer**, and **DevOps Administrator** of this process, plus reference links.
+- **[demo/walkthrough.html](demo/walkthrough.html)** — a presenter script (runs without hardware) and
+  real sample artifacts (PEQ, diagrammer export, check-out package).
+
 ## Implementation plan
 
 [docs/implementation_plan.html](docs/implementation_plan.html) — gap analysis against the management
-flow (steps 1–4), eight workstreams (G1–G8), sprint sequencing, and decisions needed. Open it in a
-browser; it has a built-in commenting layer for review (comments export as JSON/Markdown).
+flow (steps 1–4), the G1–G11 workstreams, sprint sequencing, and decisions. Open it in a browser; it has
+a built-in commenting layer for review (comments export as JSON/Markdown).
 
 ## Integration seams (active work)
 

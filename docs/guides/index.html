@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentation Hub — Redesign Delivery One</title>
+<style>
+  :root { --bg:#0f1419; --panel:#1a2129; --panel2:#212b35; --text:#d8e1e8; --muted:#8a9aa8;
+          --accent:#4db8a8; --green:#3fb950; --amber:#d29922; --blue:#58a6ff; --border:#30404d; }
+  * { box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:"Segoe UI",system-ui,sans-serif; margin:0; line-height:1.55; }
+  .wrap { max-width:980px; margin:0 auto; padding:32px 40px 100px; }
+  h1 { color:var(--accent); border-bottom:2px solid var(--accent); padding-bottom:8px; }
+  h2 { color:var(--accent); margin-top:1.8em; }
+  a { color:var(--blue); text-decoration:none; } a:hover { text-decoration:underline; }
+  .muted { color:var(--muted); }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-top:14px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
+  .card h3 { margin:0 0 6px; color:var(--blue); }
+  .card .who { color:var(--muted); font-size:0.85em; margin-bottom:8px; }
+  .card ul { margin:8px 0 0; padding-left:18px; font-size:0.9em; }
+  .ref { font-size:0.92em; }
+  .ref li { margin:4px 0; }
+  code { background:var(--panel2); padding:1px 6px; border-radius:4px; color:#e3b341; font-size:0.9em; }
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>Documentation Hub</h1>
+<p class="muted">The deployment ecosystem: a topology diagrammer feeds NetBox (the source of truth); an
+offline orchestrator deploys + validates a rack and records the result; reparsers-v2 turns that into the
+customer as-built. Pick your role below.</p>
+
+<h2>Role guides</h2>
+<div class="cards">
+  <div class="card">
+    <h3><a href="system_administrator_guide.html">System Administrator</a></h3>
+    <div class="who">Owns the platform &amp; security posture</div>
+    <ul>
+      <li>Ecosystem architecture &amp; the three projects</li>
+      <li>NetBox source of truth + data model</li>
+      <li>License, vault &amp; token security model</li>
+      <li>Secrets handling &amp; system troubleshooting</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3><a href="field_engineer_guide.html">Field Engineer</a></h3>
+    <div class="who">Runs the deployment on site (L2)</div>
+    <ul>
+      <li>The check-in → deploy → check-out flow</li>
+      <li>Deployment kit &amp; per-product cabling</li>
+      <li>Step control, generated passwords, validation</li>
+      <li>Troubleshooting on the floor</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3><a href="devops_administrator_guide.html">DevOps Administrator</a></h3>
+    <div class="who">Prepares deployments &amp; maintains the toolchain</div>
+    <ul>
+      <li>Seeding NetBox (workbook / JSON / interactive)</li>
+      <li>PEQ generation &amp; minting engineer binaries</li>
+      <li>Hardware matrix &amp; new-product onboarding</li>
+      <li>The as-built pipeline &amp; CI checks</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Demo</h2>
+<p class="ref"><a href="../../demo/walkthrough.html">Demo walkthrough &amp; sample artifacts</a> — a
+presenter script (runs without hardware) plus a real sample PEQ, a diagrammer export, and a check-out
+package.</p>
+
+<h2>Reference documents</h2>
+<ul class="ref">
+  <li><a href="../implementation_plan.html">Implementation plan (G1–G11)</a> — workstream status with review commenting.</li>
+  <li><a href="../asbuilt_schema.md">As-built schema &amp; reparsers-v2 seam</a> — the Seam 3 contract.</li>
+  <li><a href="../../deploy/docs/field_test_runbook.html">Field test runbook</a> — step-by-step first hardware run.</li>
+  <li><a href="../../deploy/docs/workflows/index.html">Per-product workflow diagrams</a> — OS10, SONiC, ESXi, PowerStore, ME5, PowerScale, Unity.</li>
+  <li>In the deploy repo: <code>docs/admin_guide.md</code>, <code>docs/onsite_engineer_guide.md</code>,
+      <code>docs/product_onboarding.md</code>, <code>docs/facilities_sources.md</code>,
+      <code>docs/supported_models.md</code>, and the security reviews.</li>
+</ul>
+
+<p class="muted" style="margin-top:3em">Umbrella repo: <code>redesign-delivery-one</code> (submodules:
+<code>deploy/</code>, <code>diagrammer/</code>, <code>reparsers/</code>).</p>
+
+</div></body></html>

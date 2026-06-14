@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Field Engineer Guide — Redesign Delivery One</title>
+<style>
+  :root { --bg:#0f1419; --panel:#1a2129; --panel2:#212b35; --text:#d8e1e8; --muted:#8a9aa8;
+          --accent:#4db8a8; --green:#3fb950; --amber:#d29922; --red:#f85149; --blue:#58a6ff; --border:#30404d; }
+  * { box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:"Segoe UI",system-ui,sans-serif; margin:0; line-height:1.55; }
+  .wrap { max-width:1000px; margin:0 auto; padding:32px 40px 100px; }
+  h1 { color:var(--accent); border-bottom:2px solid var(--accent); padding-bottom:8px; }
+  h2 { color:var(--accent); margin-top:1.9em; }
+  h3 { color:var(--blue); margin-top:1.3em; font-size:1.05em; }
+  code { background:var(--panel2); padding:1px 6px; border-radius:4px; color:#e3b341; font-size:0.92em; }
+  kbd { background:var(--panel2); border:1px solid var(--border); border-radius:4px; padding:1px 6px; }
+  pre { background:var(--panel2); padding:12px 16px; border-radius:8px; overflow-x:auto; border:1px solid var(--border); font-size:0.88em; }
+  table { border-collapse:collapse; width:100%; margin:12px 0; font-size:0.9em; }
+  th { background:var(--panel2); color:var(--accent); text-align:left; }
+  th,td { border:1px solid var(--border); padding:7px 11px; vertical-align:top; }
+  .note { background:var(--panel); border-left:4px solid var(--accent); padding:10px 16px; border-radius:0 8px 8px 0; margin:14px 0; }
+  .warn { border-left-color:var(--amber); } .crit { border-left-color:var(--red); }
+  a { color:var(--blue); } .muted { color:var(--muted); }
+  .phase { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:6px 16px; margin:16px 0; }
+  .phase h3 { margin-top:10px; }
+  ul.chk { list-style:none; padding-left:0; } ul.chk li { padding:3px 0 3px 26px; position:relative; }
+  ul.chk li::before { content:"\2610"; position:absolute; left:0; color:var(--accent); }
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>Field Engineer Guide</h1>
+<p class="muted">For the L2 engineer running the deployment on site. This is the friendly, consolidated
+version; for the first hardware run also use the step-by-step
+<a href="../../deploy/docs/field_test_runbook.html">field test runbook</a>. Companions:
+<a href="system_administrator_guide.html">System Admin</a> ·
+<a href="devops_administrator_guide.html">DevOps Admin</a>.</p>
+
+<div class="note crit"><strong>The golden rule:</strong> the tool never fakes success. If a device doesn't
+answer, it stops and shows you the transcript or API response. Never work around a <code>FATAL DAG ERROR</code>
+or a red validation to "keep moving" — fix it or record it and raise it.</div>
+
+<h2>The shape of a job: three phases</h2>
+<p>You are <strong>briefly online</strong> at the start and end, and <strong>fully air-gapped</strong> in
+between. No hotspot is needed on the datacenter floor.</p>
+<table>
+<tr><th>Phase</th><th>Where</th><th>Command</th><th>Internet</th></tr>
+<tr><td>1. Check-in</td><td>Office / hotel</td><td><code>deploy.exe check-in</code></td><td>YES</td></tr>
+<tr><td>2. Deploy</td><td>Datacenter</td><td><code>deploy.exe</code></td><td><strong>NO</strong></td></tr>
+<tr><td>3. Check-out</td><td>Back online</td><td><code>deploy.exe check-out</code></td><td>YES</td></tr>
+</table>
+
+<h2>What to bring (the deployment kit)</h2>
+<ul class="chk">
+<li>Your minted <code>datacenter_orchestrator_&lt;You&gt;.exe</code> — check the expiry covers the trip.</li>
+<li><code>hardware_matrix.enc</code> in the same folder as the exe.</li>
+<li><code>session_bundle_&lt;project&gt;.enc</code> from your check-in (it only opens in <em>your</em> build).</li>
+<li>A stock <strong>ESXi installer ISO</strong> if the job has PowerEdge nodes (download before you travel).</li>
+<li>Console cables: RJ45-to-DB9 (switches), USB-RS232 (PowerScale), micro-USB (Unity SP), + an Ethernet patch cable (ME5, PowerStore discovery).</li>
+<li>A USB serial adapter with known-good drivers — test it first; <code>no serial port found</code> is a hard stop.</li>
+<li>The device <strong>pull tags</strong> (factory iDRAC/array passwords).</li>
+</ul>
+
+<div class="phase">
+<h3>Phase 1 — Check-in (online, before you travel)</h3>
+<pre>set NETBOX_TOKEN=&lt;token&gt;
+deploy.exe check-in
+-&gt; Enter Target Sequence Identifier: project-&lt;name&gt;</pre>
+<p>It pulls the design, validates it against the hardware rules, and seals
+<code>session_bundle_&lt;project&gt;.enc</code>. <strong>If check-in reports errors, fix them in NetBox now</strong>
+— not on the floor. A bundle older than 7 days warns; older than 30 days blocks (re-run check-in).</p>
+</div>
+
+<div class="phase">
+<h3>Phase 2 — Deploy (air-gapped)</h3>
+<pre>deploy.exe</pre>
+<ol>
+<li><strong>License:</strong> if offline, you'll see a <strong>Challenge Code</strong>. Call the NOC; they read back a 6-digit override. Enter it. (This is normal on networks where the time-check can't reach out.)</li>
+<li>The bundle loads and re-validates offline. Zero NetBox traffic from here.</li>
+<li><strong>Customer-provided switches</strong> are listed first with recommended port configs. We do <em>not</em> configure them — coordinate the recommendations with the customer's network team <em>before</em> deploying gear that depends on those ports.</li>
+<li>Deployment runs <strong>switches → storage → compute</strong>. For each device: cabling instructions, then the real procedure.</li>
+</ol>
+<h3>Your controls</h3>
+<table>
+<tr><th>Prompt</th><th>Keys</th><th>Meaning</th></tr>
+<tr><td>Deploy now?</td><td><kbd>y</kbd> / <kbd>N</kbd> / <kbd>done</kbd></td><td>deploy / skip (revisit later) / I did it by hand</td></tr>
+<tr><td>On failure</td><td><kbd>Y</kbd> / <kbd>skip</kbd> / <kbd>done</kbd></td><td>retry / mark failed &amp; move on / took over by hand</td></tr>
+<tr><td>Control menu</td><td><code>deploy N</code> / <code>redo N</code> / <code>done N</code> / <kbd>Enter</kbd></td><td>act on any device / re-run a done one / finish &amp; validate</td></tr>
+</table>
+<div class="note"><strong>Passwords are generated for you.</strong> Each device's new OS password (ESXi
+root, PowerStore admin, OneFS root) is random, unique, and shown <strong>once</strong>. It's saved in the
+vault and reappears at check-out — note it or trust the export. Factory pull-tag passwords are still
+prompted (and reused on retries). If the customer dictates passwords, restart with <code>--manual-passwords</code>.</div>
+<div class="note"><strong>Interruptions are safe.</strong> Progress saves per device. If the run dies at
+device 5 of 7, rerun the exe — done devices are skipped, and the control menu lets you pick up anything
+pending/skipped/failed.</div>
+</div>
+
+<div class="phase">
+<h3>Validation (automatic, at the end of Phase 2)</h3>
+<p>After the last device, live checks run against everything deployed, and CLI/REST captures are saved
+for the as-built. Expected passes:</p>
+<table>
+<tr><th>Product</th><th>A pass means</th></tr>
+<tr><td>OS10</td><td>VLT peer is <strong>up</strong> (both switches deployed + VLTi cabled)</td></tr>
+<tr><td>SONiC</td><td>at least one BGP neighbor <strong>Established</strong></td></tr>
+<tr><td>PowerStore</td><td>cluster state = <strong>Configured</strong></td></tr>
+<tr><td>ESXi</td><td>root SSH works; active storage paths (array-primary)</td></tr>
+<tr><td>PowerScale</td><td>OneFS responds (<code>isi status</code>)</td></tr>
+<tr><td>PowerVault ME5</td><td>system health <strong>OK</strong></td></tr>
+<tr><td>Unity</td><td>Unisphere reachable (full health in the UI)</td></tr>
+</table>
+<div class="warn note"><strong>A red validation exits non-zero — do not leave site with validation red.</strong>
+The detail line tells you why (cabling, zoning, peer not deployed, paths not visible). Fix it, then
+<code>redo N</code> the device, or finish it by hand with <code>done</code> (it's still validated).</div>
+</div>
+
+<div class="phase">
+<h3>Phase 3 — Check-out (back online)</h3>
+<pre>set NETBOX_TOKEN=&lt;write-token&gt;
+deploy.exe check-out</pre>
+<p>The token needs <strong>write</strong> scope (a 403 means it doesn't). Check-out:</p>
+<ul>
+<li>Builds <code>checkout_&lt;project&gt;/</code>: the plaintext credentials JSON + a <code>manifest.json</code> (per-device status, validation, artifact list) for the as-built generator.</li>
+<li>Reports to NetBox: deployed devices flip to <strong>Active</strong>; every attempted device gets a journal entry.</li>
+<li>Optional <code>--sync-1password</code>: pushes credentials to 1Password, then offers to delete the plaintext.</li>
+<li>Re-runnable — if any write fails, fix and run again.</li>
+</ul>
+<div class="crit note"><strong>Before the laptop leaves your control:</strong> merge the as-built credentials
+into the as-built doc and <strong>delete</strong> <code>asbuilt_credentials_&lt;project&gt;.json</code> and any
+<code>*_esxi_ks.iso</code> in <code>output_configs/</code> (they embed the ESXi root password). 1Password sync
+does the delete-offer for you.</div>
+</div>
+
+<h2>Per-product first-contact tips</h2>
+<table>
+<tr><th>Product</th><th>How it deploys</th><th>Watch for</th></tr>
+<tr><td>OS10 switch</td><td>Serial console, VLT config</td><td>Console port locked / switch not at factory default (use real creds at the vault prompt); VLTi cabling.</td></tr>
+<tr><td>SONiC switch</td><td>Serial bootstrap → SSH config load</td><td>Mgmt IP unreachable after bootstrap; incomplete BGP neighbor table.</td></tr>
+<tr><td>PowerStore</td><td>Discovery (link-local) → REST</td><td>Laptop not on the discovery VLAN; front-end port speed mismatch.</td></tr>
+<tr><td>PowerEdge/ESXi</td><td>Redfish virtual-media ISO install</td><td>iDRAC pull-tag creds (14G+ random); ESXi ISO missing; host can't reach your HTTP server.</td></tr>
+<tr><td>PowerVault ME5</td><td>Direct REST</td><td>Forced first-login password change; mgmt IP moves mid-session.</td></tr>
+<tr><td>PowerScale</td><td>Serial Config Wizard</td><td>Extra/repeated wizard prompts (read the transcript); &lt;3 nodes blocks at the DAG.</td></tr>
+<tr><td>Unity XT</td><td>Serial <code>svc_initial_config</code></td><td>SP console cabling.</td></tr>
+</table>
+
+<h2>Troubleshooting</h2>
+<table>
+<tr><th>Message</th><th>Do</th></tr>
+<tr><td><code>No session bundle found</code></td><td>You skipped check-in. Run it online, or <code>--online</code> to deploy live.</td></tr>
+<tr><td><code>cannot open session_bundle…</code></td><td>Bundle from a different build. Re-check-in with your exe.</td></tr>
+<tr><td>Bundle &gt; 30 days</td><td>Re-check-in. Only type <code>OVERRIDE</code> if you've confirmed the design hasn't changed.</td></tr>
+<tr><td><code>no NetBox API token available</code></td><td>Set <code>NETBOX_TOKEN</code> (online phases only).</td></tr>
+<tr><td><code>FATAL DAG ERROR</code></td><td>Design violates hardware limits. Stop, raise to Architecture.</td></tr>
+<tr><td><code>no serial port found</code></td><td>Console adapter/driver. Fix the cable — the tool won't fake it.</td></tr>
+<tr><td>check-out 403</td><td>Token lacks write scope. Get a write token, re-run check-out.</td></tr>
+</table>
+
+<p class="muted" style="margin-top:3em">Per-product workflow diagrams:
+<code>deploy/docs/workflows/index.html</code> (offline-friendly).</p>
+
+</div></body></html>

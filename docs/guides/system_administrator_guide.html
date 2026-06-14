@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Administrator Guide — Redesign Delivery One</title>
+<style>
+  :root { --bg:#0f1419; --panel:#1a2129; --panel2:#212b35; --text:#d8e1e8; --muted:#8a9aa8;
+          --accent:#4db8a8; --green:#3fb950; --amber:#d29922; --red:#f85149; --blue:#58a6ff; --border:#30404d; }
+  * { box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:"Segoe UI",system-ui,sans-serif; margin:0; line-height:1.55; }
+  .wrap { max-width:1000px; margin:0 auto; padding:32px 40px 100px; }
+  h1 { color:var(--accent); border-bottom:2px solid var(--accent); padding-bottom:8px; }
+  h2 { color:var(--accent); margin-top:1.9em; }
+  h3 { color:var(--blue); margin-top:1.3em; font-size:1.05em; }
+  code { background:var(--panel2); padding:1px 6px; border-radius:4px; color:#e3b341; font-size:0.92em; }
+  pre { background:var(--panel2); padding:12px 16px; border-radius:8px; overflow-x:auto; border:1px solid var(--border); font-size:0.88em; }
+  table { border-collapse:collapse; width:100%; margin:12px 0; font-size:0.9em; }
+  th { background:var(--panel2); color:var(--accent); text-align:left; }
+  th,td { border:1px solid var(--border); padding:7px 11px; vertical-align:top; }
+  .note { background:var(--panel); border-left:4px solid var(--accent); padding:10px 16px; border-radius:0 8px 8px 0; margin:14px 0; }
+  .warn { border-left-color:var(--amber); } .crit { border-left-color:var(--red); }
+  a { color:var(--blue); } .muted { color:var(--muted); }
+  .toc { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:10px 22px; }
+  svg { display:block; margin:18px auto; max-width:100%; }
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>System Administrator Guide</h1>
+<p class="muted">For the senior administrator who owns the platform this runs on — the NetBox instance,
+the build/secrets toolchain, the security posture, and the integration between the three projects.
+Audience-specific companions: <a href="field_engineer_guide.html">Field Engineer</a> ·
+<a href="devops_administrator_guide.html">DevOps Administrator</a>.</p>
+
+<div class="toc">
+<strong>Contents</strong>
+<ol>
+<li><a href="#arch">The ecosystem at a glance</a></li>
+<li><a href="#netbox">NetBox: the source of truth &amp; data model</a></li>
+<li><a href="#security">Security model</a></li>
+<li><a href="#secrets">Secrets &amp; artifacts that must never be committed</a></li>
+<li><a href="#lifecycle">Engagement lifecycle (system view)</a></li>
+<li><a href="#integration">Integration seams</a></li>
+<li><a href="#troubleshooting">System-level troubleshooting</a></li>
+</ol>
+</div>
+
+<h2 id="arch">1 · The ecosystem at a glance</h2>
+<p>Three repositories, one pipeline. The umbrella repo <code>redesign-delivery-one</code> pins all three
+as submodules.</p>
+<svg viewBox="0 0 960 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ecosystem data flow">
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#4db8a8"/></marker></defs>
+  <style>.b{fill:#212b35;stroke:#4db8a8;stroke-width:1.5;rx:8;} .t{fill:#4db8a8;font-size:13px;font-weight:700;font-family:"Segoe UI",sans-serif;} .s{fill:#d8e1e8;font-size:11px;font-family:"Segoe UI",sans-serif;} .f{stroke:#4db8a8;stroke-width:2;fill:none;marker-end:url(#a);}</style>
+  <rect class="b" x="20" y="40" width="170" height="62"/><text class="t" x="34" y="64">diagrammer</text><text class="s" x="34" y="84">design wizard · as-deployed</text>
+  <rect class="b" x="20" y="130" width="170" height="62" stroke="#58a6ff"/><text class="t" x="34" y="154" fill="#58a6ff">NetBox</text><text class="s" x="34" y="174">source of truth</text>
+  <rect class="b" x="395" y="85" width="180" height="62"/><text class="t" x="409" y="109">deploy tool (Go exe)</text><text class="s" x="409" y="129">intake · deploy · validate</text>
+  <rect class="b" x="760" y="85" width="180" height="62"/><text class="t" x="774" y="109">reparsers-v2</text><text class="s" x="774" y="129">as-built document</text>
+  <path class="f" d="M190,71 C300,71 300,110 393,110"/>
+  <path class="f" d="M190,161 C300,161 300,120 393,120"/>
+  <path class="f" d="M575,116 L758,116"/>
+  <path class="f" d="M485,147 C485,200 250,200 190,192"/><text class="s" x="300" y="215">check-out: status + as-built record back to NetBox / reparsers</text>
+</svg>
+<table>
+<tr><th>Submodule</th><th>Repo</th><th>Tech</th><th>Owns</th></tr>
+<tr><td><code>deploy/</code></td><td>DrewsDatacenterDeployV5</td><td>Go (field exe) + Python (admin)</td><td>Intake, the offline orchestrator, validation, the deployment record</td></tr>
+<tr><td><code>diagrammer/</code></td><td>os10-diagrammer-v2</td><td>React+Vite + Flask</td><td>Design wizard + as-deployed topology diagrams</td></tr>
+<tr><td><code>reparsers/</code></td><td>reparsers-v2</td><td>Python (python-docx)</td><td>The final as-built Word document</td></tr>
+</table>
+<p>The cluster layer (vCenter/vSAN, WSFC) is a deliberately separate project, out of scope here.</p>
+
+<h2 id="netbox">2 · NetBox: the source of truth &amp; data model</h2>
+<p>Every deployment is a NetBox <strong>tenant</strong>. The deploy tool reads intent from NetBox and
+writes outcomes back. Nothing about a project lives only in a spreadsheet or someone's head.</p>
+<h3>What the seeder creates</h3>
+<table>
+<tr><th>Object</th><th>Notes</th></tr>
+<tr><td>Tenant</td><td>One per project (slug = project name). Carries the <code>storage_architecture</code> custom field.</td></tr>
+<tr><td>Device roles</td><td>Server, Storage, Network, and <strong>Customer Switch</strong> (grey — visually distinct gear we don't configure).</td></tr>
+<tr><td>Manufacturers</td><td>Dell, plus <strong>Customer-Provided</strong> for customer switches.</td></tr>
+<tr><td>Device types</td><td>From <code>hardware_definitions.json</code>; <code>u_height</code> + a facilities summary comment.</td></tr>
+<tr><td>Devices</td><td>One per node, status <code>planned</code>, with all deployment intent in <code>local_context_data</code>.</td></tr>
+</table>
+<h3>Key fields</h3>
+<ul>
+<li><code>storage_architecture</code> — <code>vsan_primary</code> | <code>array_primary</code> | <code>array_only</code>. Branches config synthesis and the DAG sanity checks. Stored on the tenant <em>and</em> stamped into each device's context so the offline pull is self-contained.</li>
+<li><code>customer_provided</code> (bool) — marks switches the tool advises on but never configures.</li>
+<li>Per-product intent (IPs, VLANs, VLT domains, BGP ASNs…) lives in <code>local_context_data</code>, resolved per node by the seeder (<code>.10/.11/…</code>, VLT-peer, ASN increment).</li>
+</ul>
+<div class="note"><strong>Device types are populated from the hardware matrix.</strong> Run
+<code>python scripts/build_custom_device_types.py</code> (DevOps role) to sync NetBox device types after a
+matrix change. It derives <code>u_height</code> from the facilities data and retires stale types.</div>
+
+<h2 id="security">3 · Security model</h2>
+<p>The field binary is built to be safe to hand an L2 engineer and to survive an air-gapped site. Three
+layers:</p>
+<h3>License &amp; identity (per-engineer build)</h3>
+<ul>
+<li>Each engineer gets a uniquely compiled exe (<code>cmd/admin/admin_builder.go</code>) with their name,
+an expiry date, and a random <code>BuildSecret</code> injected via <code>-ldflags</code> and recorded in the
+NOC registry (<code>minted_builds.json</code>, never committed).</li>
+<li><strong>Offline unlock</strong> uses HMAC-SHA256 challenge-response — the engineer reads a Challenge Code,
+the NOC computes the override (<code>admin_builder respond</code>). There is no master keyword; the old
+<code>admin-override</code> and ×42 arithmetic were removed.</li>
+<li><strong>Anti-rollback</strong>: a MAC-protected <code>license_state.json</code> floors the trusted clock so a
+rolled-back workstation clock can't revive an expired build.</li>
+</ul>
+<h3>Encryption</h3>
+<ul>
+<li>The <strong>hardware matrix</strong> ships as <code>hardware_matrix.enc</code> (AES-GCM, build-time master key).</li>
+<li>The <strong>credential vault</strong> (<code>credentials_vault_&lt;tenant&gt;.json.enc</code>) and the
+<strong>session bundle</strong> (<code>session_bundle_&lt;tenant&gt;.enc</code>) are AES-GCM under a key
+derived from <code>BuildSecret + engineer</code> — so they only open in the binary that wrote them, and
+survive process restarts on site.</li>
+</ul>
+<h3>NetBox tokens (no compiled-in fallback)</h3>
+<p>The legacy shared token was removed from the binary (finding RT-2). Token resolution is
+<code>NETBOX_TOKEN</code> env → mint-time injected token → hard error. Scope per phase:</p>
+<table>
+<tr><th>Phase</th><th>Internet</th><th>Token scope</th></tr>
+<tr><td>check-in / <code>--online</code></td><td>yes</td><td>read on dcim, tenancy, extras</td></tr>
+<tr><td>deploy (default)</td><td><strong>no</strong></td><td>none — runs from the bundle</td></tr>
+<tr><td>check-out</td><td>yes</td><td><strong>write</strong> on dcim.device + extras.journalentry</td></tr>
+</table>
+<div class="warn note"><strong>Outstanding RT-2 action (server-side):</strong> the legacy token
+(<code>K9pv…</code>) is gone from the Go binary but must still be <strong>revoked in NetBox</strong>, and the
+Python admin scripts still carry it as a default — rotate those. Tracked in the deploy repo's red-team doc.</div>
+<div class="note"><strong>TLS to factory devices:</strong> <code>InsecureSkipVerify</code> /
+<code>InsecureIgnoreHostKey</code> are scoped to factory-bootstrap flows only (self-signed certs / fresh host
+keys on first contact). Documented trade-off, not a blanket setting.</div>
+
+<h2 id="secrets">4 · Secrets &amp; artifacts that must never be committed</h2>
+<p>All gitignored; enforce in review.</p>
+<table>
+<tr><th>File</th><th>Contents</th><th>Handling</th></tr>
+<tr><td><code>minted_builds.json</code>, <code>license_state.json</code></td><td>Build secrets, license floor</td><td>NOC-side only</td></tr>
+<tr><td><code>credentials_vault_*.json.enc</code></td><td>Encrypted credentials</td><td>Stays on the field laptop</td></tr>
+<tr><td><code>session_bundle_*.enc</code></td><td>Encrypted plan snapshot</td><td>Deployment kit</td></tr>
+<tr><td><code>asbuilt_credentials_*.json</code></td><td><strong>PLAINTEXT</strong> credentials</td><td>Merge into the as-built, then delete; or flush to 1Password (<code>--sync-1password</code>) and delete</td></tr>
+<tr><td><code>checkout_*/</code></td><td>As-built package (contains the plaintext creds copy)</td><td>Same plaintext rule</td></tr>
+<tr><td><code>*_esxi_ks.iso</code> in <code>output_configs/</code></td><td>Embeds the ESXi root password</td><td>Delete after the site visit</td></tr>
+<tr><td><code>validation_artifacts/</code></td><td>Captured CLI/REST output (non-secret)</td><td>Feeds the as-built; safe to keep</td></tr>
+</table>
+
+<h2 id="lifecycle">5 · Engagement lifecycle (system view)</h2>
+<ol>
+<li><strong>Design</strong> — diagrammer wizard or intake workbook.</li>
+<li><strong>Seed</strong> — into NetBox via the seeder (DevOps role), validated by the DAG.</li>
+<li><strong>PEQ</strong> — customer requirements doc generated from the tenant.</li>
+<li><strong>Mint</strong> — a per-engineer exe + sealed hardware matrix (DevOps role).</li>
+<li><strong>Check-in</strong> — engineer seals the project to a bundle (online).</li>
+<li><strong>Deploy</strong> — air-gapped, from the bundle.</li>
+<li><strong>Check-out</strong> — status + journals back to NetBox; as-built package out; optional 1Password flush.</li>
+<li><strong>As-built</strong> — reparsers-v2 turns the package (+ TSRs) into the customer document.</li>
+</ol>
+
+<h2 id="integration">6 · Integration seams</h2>
+<table>
+<tr><th>Seam</th><th>Flow</th><th>State</th></tr>
+<tr><td>1</td><td>diagrammer wizard → <code>intent.json</code> → seeder <code>--from-json</code> → NetBox</td><td>done</td></tr>
+<tr><td>2</td><td>Phase-5 switch captures → <code>&lt;switch&gt;_diagrammer.zip</code> → diagrammer as-deployed diagram</td><td>done</td></tr>
+<tr><td>3</td><td>check-out package (manifest + as-built) → reparsers-v2 importer</td><td>schema done; importer gated on field test</td></tr>
+</table>
+
+<h2 id="troubleshooting">7 · System-level troubleshooting</h2>
+<table>
+<tr><th>Symptom</th><th>System cause / action</th></tr>
+<tr><td>Engineer's exe fatally locks</td><td>Build expired or clock anti-rollback tripped. Re-mint (DevOps); never patch the clock.</td></tr>
+<tr><td>Every cold start shows a Challenge Code</td><td><code>time.cloudflare.com</code> unreachable on that network; license falls back to NOC override. Expected — supply the override, or pre-warm <code>license_state.json</code> online first.</td></tr>
+<tr><td>check-out 403</td><td>Token lacks write scope (dcim.device / extras.journalentry). Issue a write-scoped token.</td></tr>
+<tr><td>DAG rejects a valid-looking design</td><td>Intent violates a hardware-matrix rule (NIC, node count, capacity, firmware floor). Fix the design; do not bypass.</td></tr>
+<tr><td>NetBox device types look wrong / missing models</td><td>Re-run <code>build_custom_device_types.py</code> after a matrix change (DevOps).</td></tr>
+<tr><td>A bundle won't open on a different laptop</td><td>By design — bundles are keyed to the minting binary. Re-check-in with that engineer's build.</td></tr>
+</table>
+
+<p class="muted" style="margin-top:3em">Deeper references in the deploy repo: <code>docs/admin_guide.md</code>,
+<code>docs/v5_red_team_report.md</code>, <code>docs/v5_infosec_review_report.md</code>,
+<code>docs/product_onboarding.md</code>.</p>
+
+</div></body></html>
