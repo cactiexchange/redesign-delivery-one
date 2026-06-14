@@ -176,11 +176,13 @@ researched facilities data for all 26 models and the product onboarding guide.</
 <tr><td><strong>G1</strong></td><td>Check-in / check-out session model (online bookends, air-gapped middle) <span class="tag built">DONE</span></td><td>deploy</td><td>shipped 2026-06-12</td><td>Landed as deploy commit <code>750b836</code>: <code>check-in</code> / offline default / <code>--online</code> / <code>check-out</code>; D4 staleness; RT-2 fallback token deleted; air-gap pinned by a tripwired-transport test; verified end-to-end without hardware.</td></tr>
 <tr><td><strong>G2</strong></td><td>PEQ documentation generator (power, RU, ports, DNS, whitelists)</td><td>deploy (py)</td><td>M · 3–4d <span class="tag built">data ✓</span></td><td>Step 1c. Facilities data for all 26 models now researched and committed (<code>docs/facilities_sources.md</code>) — remaining work is the generator + per-product flow templates.</td></tr>
 <tr><td><strong>G3</strong></td><td>Randomized unique per-device passwords <span class="tag built">G3a DONE</span>; local vault default, 1Password optional backend (G3b, sprint 4)</td><td>deploy</td><td>G3a shipped 2026-06-12</td><td>Deploy commit <code>2aa43c2</code>: crypto-random unique OS passwords by default (per-product policies, kickstart/serial-safe charsets, uniqueness pinned by tests); <code>--manual-passwords</code> escape hatch. G3b (1Password backend with queue-and-flush at check-out) remains for sprint 4.</td></tr>
-<tr><td><strong>G4</strong></td><td>Full step control: interrupt / resume / skip / go back / redo / human-takeover</td><td>deploy</td><td>S–M · 1–2d</td><td>Step 3c: resume exists; this adds <code>done</code> (human completed it), <code>redo</code> (re-run a completed device), and a device-picker to jump anywhere in the plan.</td></tr>
+<tr><td><strong>G4</strong></td><td>Full step control: interrupt / resume / skip / go back / redo / human-takeover <span class="tag built">DONE</span></td><td>deploy</td><td>shipped 2026-06-13</td><td>Deploy commit <code>c78addd</code>: y/N/done prompts, retry/skip/done on failure, Device Control Menu (deploy/redo/done N), StateSkipped + Manual-takeover flag, phase-order guards. Manual devices still get Phase-5 validated. Verified end-to-end offline.</td></tr>
 <tr><td><strong>G5</strong></td><td>Artifact capture for storage/compute (extends Seam 2)</td><td>deploy</td><td>S–M · 1–2d</td><td>Step 3e says gather logs "as needed" — switches done, rest pending.</td></tr>
 <tr><td><strong>G6</strong></td><td>As-built schema + reparsers-v2 import (= Seam 3, confirmed: reparsers-v2 is the as-built generator)</td><td>reparsers + deploy</td><td>M · 2–4d</td><td>Step 4: "the program spits out the as builts." Closes the Phase 3 deferral.</td></tr>
 <tr><td><strong>G7</strong></td><td>Wizard → seeder JSON export (= Seam 1)</td><td>diagrammer + deploy</td><td>M · 2–3d</td><td>Step 1: "use the topology diagrammer to deploy products" — makes the diagrammer the actual front door.</td></tr>
 <tr><td><strong>G9</strong></td><td>Product onboarding framework (any manufacturer, new cards/modules)</td><td>deploy</td><td>M · 2–3d <span class="tag built">guide ✓</span></td><td>Large focus per Drew. Onboarding guide shipped (<code>docs/product_onboarding.md</code>: data-only tiers for models/cards, one-file-plus-registry for new lines). Remaining: the <code>product_registry.go</code> refactor that makes the compiler enforce complete onboarding.</td></tr>
+<tr><td><strong>G10</strong></td><td>As-designed sign-off &amp; as-built reconciliation (deltas → remediations/best-practice/re-cabling)</td><td>deploy + diagrammer + reparsers</td><td>L · agenda (post-sprint-4)</td><td>Added 2026-06-13. Freeze a signed as-designed baseline; diff the as-built against it; emit findings + recommendations into the as-built doc. Depends on G6 + Seam 2 + G11.</td></tr>
+<tr><td><strong>G11</strong></td><td>Customer-provided switches (configurable port count/types, recommend-don't-deploy, visually distinct)</td><td>seeder + diagrammer + deploy</td><td>M · agenda (pull earlier if a design needs it)</td><td>Added 2026-06-13. Model switches we don't control as a distinct class: excluded from deploy/DAG, emit recommended port configs, render visually distinct from project-purchased switches.</td></tr>
 </table>
 <p class="muted"><strong>Future features</strong> (out of sprint planning): G8 BOM/Jira intake prefill — revisit
 when a real BOM/quote sample exists. The cluster layer (vCenter/vSAN, WSFC) stays a separate project per the
@@ -392,6 +394,52 @@ template internals to map what it consumes today. Then:</p>
 export to prefill wizard models and counts (Jira via CSV export of the engagement ticket). Picks back up
 when a real BOM sample exists to design against. The wizard/workbook remain the manual path meanwhile,
 so nothing blocks on this.</p>
+</div>
+
+<div class="c-block" data-cid="g10">
+<h3>G10 — As-designed sign-off &amp; as-built reconciliation <span class="tag s">AGENDA (post-sprint-4)</span></h3>
+<p><em>(Added 2026-06-13 per Drew — runs after the core build cycle.)</em> A formal loop that turns the
+design into a signed baseline and then grades reality against it:</p>
+<ul>
+  <li><strong>As-designed sign-off</strong>: freeze the NetBox/diagrammer design into a signed
+      "as-designed" baseline (the intent the customer approved) — a sealed snapshot, akin to the G1
+      session bundle, but the <em>authoritative design of record</em> rather than a deploy input.</li>
+  <li><strong>Reconcile as-built vs as-designed</strong>: after deployment, diff the captured as-built
+      (check-out manifest + validation artifacts + diagrammer's as-deployed parse) against the signed
+      design. Surface every delta: missing devices, wrong IPs/VLANs/firmware, cabling that doesn't match
+      the designed topology.</li>
+  <li><strong>Recommendations engine</strong>: for each delta and for sub-best-practice config, emit
+      <em>remediations</em>, <em>best-practice configuration recommendations</em>, and
+      <em>re-cabling requests</em> — especially where the customer-provided gear (G11) wasn't configured
+      to the recommended port spec. Output feeds reparsers-v2's as-built document as a "findings &amp;
+      recommendations" section.</li>
+</ul>
+<p><strong>Depends on:</strong> G6 (as-built schema), the diagrammer's as-deployed parse (Seam 2), and
+G11 (so customer-switch deltas are scoped as "recommend, don't enforce").</p>
+</div>
+
+<div class="c-block" data-cid="g11">
+<h3>G11 — Customer-provided switches (first-class, visually distinct) <span class="tag s">AGENDA (pull earlier if a design needs it)</span></h3>
+<p><em>(Added 2026-06-13 per Drew.)</em> Project devices frequently connect to switches the customer
+already owns and that <strong>we do not configure</strong>. These must be modeled as a distinct class:</p>
+<ul>
+  <li><strong>Custom "customer-provided switch" type</strong> — kept deliberately simple: configurable
+      <em>port count</em> and <em>port types/speeds</em>, no full model catalog. It is uplink/attachment
+      context, not a deploy target.</li>
+  <li><strong>The deploy tool never tries to configure it</strong> — it is excluded from the deployment
+      loop and DAG hardware checks; instead the tool <em>emits recommended port configs and best
+      practices</em> (VLANs, MTU/jumbo, LACP, trunk/access) for the customer's network team, knowing they
+      may not be followed.</li>
+  <li><strong>Visually distinct in the diagrammer</strong> — customer-provided switches render
+      differently (e.g. dashed/greyed, "customer" badge) from switches purchased as part of the project,
+      so a glance separates "ours to deploy" from "theirs to coordinate". When a project includes no
+      project-purchased switches, this replaces today's free-text "network dependency matrix" banner.</li>
+  <li><strong>Spans three repos</strong>: seeder/NetBox (a <code>customer_provided</code> classification +
+      simple port schema), diagrammer (distinct node rendering), deploy tool (skip + recommend, and feed
+      the G10 reconciliation so unfollowed recommendations show up as findings, not failures).</li>
+</ul>
+<p><strong>Note:</strong> pull this earlier than sprint-4 if an upcoming engagement's design hinges on
+customer switches — it changes how topology is captured at intake, which is upstream of everything else.</p>
 </div>
 
 <div class="c-block" data-cid="g9">
