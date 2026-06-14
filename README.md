@@ -50,10 +50,14 @@ ingests. Drop the zip into the diagrammer for an as-deployed topology diagram �
 bundle pull needed. Handoff verified end-to-end against the diagrammer's real parsers
 (deploy commit `f068184`).
 
-### Seam 3 — Deploy tool → reparsers-v2
-`asbuilt_credentials_<tenant>.json` (produced at end of every deployment run) feeds reparsers-v2
-as structured input alongside parsed TSRs. The shared schema is defined in `docs/asbuilt_schema.md`
-(TBD — requires reading reparsers-v2 template internals).
+### Seam 3 — Deploy tool → reparsers-v2 (schema defined; importer pending)
+At check-out the deploy tool writes `checkout_<tenant>/` with a versioned `manifest.json` (deployment
+record + artifact inventory) and `asbuilt_credentials_<tenant>.json` (credentials). reparsers-v2 will
+consume these via a planned `--asbuilt` importer that adds a Deployment Summary section + credentials
+appendix, complementing its existing TSR-driven config sections. The shared contract and the
+archaeology of reparsers-v2's data flow are in [docs/asbuilt_schema.md](docs/asbuilt_schema.md).
+Both files now carry `schema_version` (deploy commit `8ad093c`); the importer + templates are the
+remaining build work, gated behind the first real check-out package from the field test.
 
 ## Getting started
 
